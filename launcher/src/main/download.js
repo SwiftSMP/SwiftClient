@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const USER_AGENT = 'SwiftClient-Launcher (swiftsmp.net)';
+const USER_AGENT = 'SwiftClient-Launcher (swiftsmp.com)';
 
 async function fetchJson(url, opts = {}) {
   const res = await fetch(url, {

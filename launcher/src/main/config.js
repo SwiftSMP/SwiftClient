@@ -34,7 +34,7 @@ const DEFAULT_APP_CONFIG = {
   // Discord application id for Rich Presence (discord.com/developers). Empty disables it.
   discordClientId: '',
   // Link for the presence button and the website.
-  website: 'https://swiftsmp.net',
+  website: 'https://swiftsmp.com',
   // Oldest version shown in the version picker.
   minVersion: '1.21',
 };

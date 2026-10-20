@@ -72,7 +72,7 @@ Item components are only bound once a world loads, so the title screen cannot dr
   "capeApi": "https://capes.swiftsmp.net",
   "discordClientId": "000000000000000000",
   "server": { "name": "SwiftSMP", "address": "swiftsmp.net" },
-  "website": "https://swiftsmp.net",
+  "website": "https://swiftsmp.com",
   "minVersion": "1.21"
 }
 ```

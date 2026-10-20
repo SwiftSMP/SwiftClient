@@ -5,7 +5,7 @@
 	"name": "SwiftClient",
 	"description": "SwiftSMP client branding and capes.",
 	"authors": ["SwiftSMP"],
-	"contact": { "homepage": "https://swiftsmp.net" },
+	"contact": { "homepage": "https://swiftsmp.com" },
 	"license": "All-Rights-Reserved",
 	"icon": "assets/swiftclient/icon.png",
 	"environment": "client",
