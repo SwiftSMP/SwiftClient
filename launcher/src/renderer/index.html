@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data: http://127.0.0.1:* http://localhost:*; connect-src 'none'; style-src 'self'; font-src 'self'; script-src 'self'">
+  <title>SwiftClient</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="titlebar">
+    <div class="brand">
+      <img src="img/logo.png" alt="">
+      <span class="word">Swift<b>Client</b></span>
+      <span class="tag" id="appVersion"></span>
+    </div>
+    <div class="update hidden" id="updateBanner"></div>
+    <div class="win-controls">
+      <button data-win="minimize" title="Minimize">&#x2013;</button>
+      <button data-win="maximize" title="Maximize">&#x25A1;</button>
+      <button data-win="close" class="close" title="Close">&#x2715;</button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="sidebar">
+      <button class="nav active" data-view="play"><span class="ico">&#9654;</span>Play</button>
+      <button class="nav" data-view="mods"><span class="ico">&#9638;</span>Mods</button>
+      <button class="nav" data-view="cosmetics"><span class="ico">&#9873;</span>Cosmetics</button>
+      <button class="nav" data-view="settings"><span class="ico">&#9881;</span>Settings</button>
+      <div class="spacer"></div>
+      <div class="account" id="account">
+        <img id="accountHead" alt="">
+        <div><div id="accountName">Not signed in</div><button class="link" id="logoutBtn">Sign out</button></div>
+      </div>
+    </nav>
+
+    <main>
+      <!-- PLAY -->
+      <section class="view active" id="view-play">
+        <div class="hero">
+          <img class="hero-logo" src="img/logo.png" alt="">
+          <h1 class="word big">Swift<b>Client</b></h1>
+          <p class="muted">Fabric, tuned for frames. Built for <span class="gold server-name">SwiftSMP</span>.</p>
+          <div class="play-row">
+            <select id="versionSelect" title="Minecraft version"></select>
+            <button class="btn primary huge" id="playBtn">Play</button>
+            <button class="btn ghost" id="joinBtn">Join <span class="server-name">SwiftSMP</span></button>
+          </div>
+          <div class="progress hidden" id="progress">
+            <div class="bar"><i id="progressBar"></i></div>
+            <div class="progress-label" id="progressLabel"></div>
+          </div>
+          <div class="notices" id="notices"></div>
+        </div>
+        <details class="console">
+          <summary>Game output</summary>
+          <pre id="gameLog"></pre>
+        </details>
+      </section>
+
+      <!-- MODS -->
+      <section class="view" id="view-mods">
+        <div class="view-head">
+          <div><h2>Mods</h2><p class="muted">Profile <b id="modsVersion"></b>. Built-in mods update themselves; yours stay as you left them.</p></div>
+          <div class="row">
+            <button class="btn ghost" data-folder="mods">Open folder</button>
+            <button class="btn primary" id="importBtn">Import mods</button>
+          </div>
+        </div>
+        <div class="drop" id="dropZone">
+          <div class="drop-title">Drop Fabric <code>.jar</code> files here</div>
+          <div class="muted">Each mod is checked for the right loader, Minecraft version and conflicts before it is added.</div>
+        </div>
+        <div class="results" id="importResults"></div>
+        <div class="mod-list" id="modList"></div>
+      </section>
+
+      <!-- COSMETICS -->
+      <section class="view" id="view-cosmetics">
+        <div class="view-head">
+          <div><h2>Capes</h2><p class="muted">Everyone playing on SwiftClient sees your cape.</p></div>
+        </div>
+        <div class="cape-grid" id="capeGrid"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="view-settings">
+        <div class="view-head"><div><h2>Settings</h2></div></div>
+        <div class="cards">
+          <div class="card">
+            <h3>Memory</h3>
+            <div class="row"><input type="range" id="memoryMb" min="1024" step="512"><span class="num" id="memoryLabel"></span></div>
+            <p class="muted small">4 GB suits most players. More than 6 GB rarely helps and can cause longer stutters.</p>
+          </div>
+          <div class="card">
+            <h3>Window</h3>
+            <div class="row">
+              <input type="number" id="width" min="640" max="7680"> <span class="muted">&times;</span>
+              <input type="number" id="height" min="480" max="4320">
+              <label class="check"><input type="checkbox" id="fullscreen"> Fullscreen</label>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Performance</h3>
+            <label class="check"><input type="checkbox" id="performanceMods"> Install the SwiftClient performance mods</label>
+            <div class="chips" id="perfList"></div>
+            <h3 class="mt">Extras</h3>
+            <div id="optionalMods"></div>
+          </div>
+          <div class="card">
+            <h3>Launcher</h3>
+            <label class="check"><input type="checkbox" id="closeOnLaunch"> Hide the launcher while playing</label>
+            <label class="check"><input type="checkbox" id="autoJoin"> <span>Join <span class="server-name">SwiftSMP</span> when I press Play</span></label>
+            <label class="check"><input type="checkbox" id="discordPresence"> Show what I'm playing on Discord</label>
+            <label class="check"><input type="checkbox" id="discordShowServer"> Include the server address on Discord</label>
+            <label class="field">Extra JVM arguments <input type="text" id="extraJvmArgs" placeholder="-Dexample=true" spellcheck="false"></label>
+            <div class="row mt">
+              <button class="btn ghost" data-folder="data">Data folder</button>
+              <button class="btn ghost" data-folder="instance">Game folder</button>
+              <button class="btn ghost" data-folder="logs">Logs</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- SIGN IN -->
+  <div class="overlay hidden" id="loginOverlay">
+    <div class="login-card">
+      <img src="img/logo.png" alt="" class="login-logo">
+      <h1 class="word big">Swift<b>Client</b></h1>
+      <p class="muted">Sign in with the Microsoft account that owns Minecraft: Java Edition.</p>
+      <button class="btn primary huge" id="loginBtn">Sign in with Microsoft</button>
+      <p class="error" id="loginError"></p>
+      <p class="muted small">You sign in on Microsoft's own page. SwiftClient never sees your password.</p>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

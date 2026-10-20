@@ -1,0 +1,5 @@
+{
+  "providers": [
+    { "type": "ttf", "file": "swiftclient:pixelify.ttf", "size": 9, "oversample": 4, "shift": [0, 1], "skip": "" }
+  ]
+}

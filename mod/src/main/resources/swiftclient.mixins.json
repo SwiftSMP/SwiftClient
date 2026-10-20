@@ -1,0 +1,7 @@
+{
+	"required": true,
+	"package": "net.swiftsmp.swiftclient.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": ["AbstractButtonMixin", "AbstractClientPlayerMixin", "AbstractSliderButtonMixin", "CameraMixin", "GuiMixin", "MinecraftMixin", "MouseHandlerMixin"],
+	"injectors": { "defaultRequire": 1 }
+}

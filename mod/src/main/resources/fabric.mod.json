@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "swiftclient",
+	"version": "${version}",
+	"name": "SwiftClient",
+	"description": "SwiftSMP client branding and capes.",
+	"authors": ["SwiftSMP"],
+	"contact": { "homepage": "https://swiftsmp.net" },
+	"license": "All-Rights-Reserved",
+	"icon": "assets/swiftclient/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": ["net.swiftsmp.swiftclient.SwiftClientMod"]
+	},
+	"mixins": ["swiftclient.mixins.json"],
+	"depends": {
+		"fabricloader": ">=0.19.0",
+		"minecraft": "~${minecraft_version}",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

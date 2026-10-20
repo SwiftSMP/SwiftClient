@@ -1,0 +1,88 @@
+{
+  "name": "swiftclient",
+  "productName": "SwiftClient",
+  "version": "0.1.0",
+  "description": "SwiftClient — the SwiftSMP Minecraft launcher",
+  "author": "SwiftSMP",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder --win nsis",
+    "release": "electron-builder --win nsis --publish always"
+  },
+  "dependencies": {
+    "adm-zip": "^0.6.1",
+    "electron-updater": "^6.8.9",
+    "semver": "^7.8.5"
+  },
+  "devDependencies": {
+    "electron": "^44.9.1",
+    "electron-builder": "^26.15.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SwiftSMP/SwiftClient.git"
+  },
+  "build": {
+    "appId": "net.swiftsmp.swiftclient",
+    "productName": "SwiftClient",
+    "copyright": "SwiftSMP",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "swiftclient.config.json",
+        "to": "swiftclient.config.json"
+      },
+      {
+        "from": "../mod/dist",
+        "to": "mods",
+        "filter": [
+          "*.jar",
+          "index.json"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "SwiftClient-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SwiftClient",
+      "uninstallDisplayName": "SwiftClient",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SwiftSMP",
+        "repo": "SwiftClient",
+        "releaseType": "release"
+      }
+    ]
+  }
+}

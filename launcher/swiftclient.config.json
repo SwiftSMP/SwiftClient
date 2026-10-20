@@ -1,0 +1,8 @@
+{
+  "msClientId": "",
+  "capeApi": "https://capes.swiftsmp.net",
+  "discordClientId": "",
+  "server": { "name": "SwiftSMP", "address": "swiftsmp.net" },
+  "website": "https://swiftsmp.net",
+  "minVersion": "1.21"
+}

@@ -1,0 +1,8 @@
+node_modules/
+launcher/dist/
+mod/build/
+mod/.gradle/
+mod/run/
+cape-server/data/
+*.log
+mod/dist/

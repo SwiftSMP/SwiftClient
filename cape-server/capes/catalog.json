@@ -1,0 +1,32 @@
+[
+  {
+    "id": "swift",
+    "name": "SwiftClient",
+    "description": "The classic SwiftClient cape",
+    "public": true
+  },
+  {
+    "id": "ember",
+    "name": "Ember",
+    "description": "Hot off the forge",
+    "public": true
+  },
+  {
+    "id": "midnight",
+    "name": "Midnight",
+    "description": "A quiet night on SwiftSMP",
+    "public": true
+  },
+  {
+    "id": "staff",
+    "name": "Staff",
+    "description": "SwiftSMP staff team",
+    "public": false
+  },
+  {
+    "id": "founder",
+    "name": "Founder",
+    "description": "Here from day one",
+    "public": false
+  }
+]
