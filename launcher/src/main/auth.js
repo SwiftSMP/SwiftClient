@@ -24,6 +24,13 @@ const XSTS_ERRORS = {
   2148916238: 'This is a child account. An adult must add it to a Microsoft family group before it can play.',
 };
 
+// Errors Microsoft's sign-in page can send back instead of a code.
+const OAUTH_ERRORS = {
+  server_error: 'Microsoft had a temporary problem signing you in. Please try again in a minute.',
+  temporarily_unavailable: 'Microsoft sign-in is temporarily unavailable. Please try again in a minute.',
+  access_denied: 'Sign-in was cancelled.',
+};
+
 function b64url(buf) {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -59,7 +66,7 @@ function interactiveLogin(clientId, parent) {
     const check = (target) => {
       if (!target.startsWith(REDIRECT_URI)) return false;
       const q = new URL(target).searchParams;
-      if (q.get('error')) finish(new Error(q.get('error_description') || q.get('error')));
+      if (q.get('error')) finish(new Error(OAUTH_ERRORS[q.get('error')] || q.get('error_description') || q.get('error')));
       else if (q.get('state') !== state) finish(new Error('Sign-in state mismatch, please try again.'));
       else finish(null, { code: q.get('code'), verifier });
       return true;
@@ -104,10 +111,20 @@ async function minecraftFromMsAccessToken(msAccessToken) {
     throw new Error(XSTS_ERRORS[xerr] || `Xbox Live sign-in failed (${xerr || e.status}).`);
   }
   const uhs = xsts.DisplayClaims.xui[0].uhs;
-  const mc = await fetchJson('https://api.minecraftservices.com/authentication/login_with_xbox', {
-    method: 'POST', headers: json,
-    body: JSON.stringify({ identityToken: `XBL3.0 x=${uhs};${xsts.Token}` }),
-  });
+  let mc;
+  try {
+    mc = await fetchJson('https://api.minecraftservices.com/authentication/login_with_xbox', {
+      method: 'POST', headers: json,
+      body: JSON.stringify({ identityToken: `XBL3.0 x=${uhs};${xsts.Token}` }),
+    });
+  } catch (e) {
+    // Mojang answers 403 "Invalid app registration" until it has approved this app's client ID.
+    if (e.status === 403 && /app registration/i.test(e.body || '')) {
+      throw new Error('SwiftClient is still waiting for Mojang to approve its sign-in. Your Microsoft and Xbox sign-in worked; please try again later.');
+    }
+    if (e.status === 429) throw new Error('Too many sign-in attempts. Please wait a few minutes and try again.');
+    throw e;
+  }
   const auth = { Authorization: `Bearer ${mc.access_token}` };
   let profile;
   try {
