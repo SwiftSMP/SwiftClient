@@ -9,7 +9,7 @@ const el = (tag, props = {}, ...kids) => {
   return n;
 };
 
-const state = { info: null, account: null, settings: null, versions: [], running: false, busy: false };
+const state = { info: null, account: null, skipLogin: false, settings: null, versions: [], running: false, busy: false };
 
 function toast(msg, err = false) {
   const t = $('#toast');
@@ -42,10 +42,13 @@ $$('.nav').forEach((n) => n.addEventListener('click', () => show(n.dataset.view)
 
 function renderAccount() {
   const a = state.account;
-  $('#loginOverlay').classList.toggle('hidden', !!a);
-  $('#accountName').textContent = a ? (a.offlineName ? `${a.offlineName} (offline)` : a.name) : 'Not signed in';
+  const dev = state.info && state.info.devOffline;
+  $('#loginOverlay').classList.toggle('hidden', !!a || !!dev || state.skipLogin);
+  $('#accountName').textContent = a ? (a.offlineName ? `${a.offlineName} (offline)` : a.name)
+    : dev ? `${dev} (dev offline)` : 'Not signed in';
   $('#accountHead').src = a ? `https://mc-heads.net/avatar/${a.uuid}/64` : 'img/logo.png';
   $('#logoutBtn').classList.toggle('hidden', !a);
+  $('#sidebarLoginBtn').classList.toggle('hidden', !!a || !!dev);
   $('#offlineEnabled').checked = !!(a && a.offlineName);
   $('#offlineName').value = (a && a.offlineName) || '';
 }
@@ -74,6 +77,13 @@ $('#loginBtn').addEventListener('click', async () => {
     $('#loginBtn').disabled = false;
   }
 });
+
+function askToSignIn() {
+  state.skipLogin = false;
+  renderAccount();
+}
+$('#skipLoginBtn').addEventListener('click', () => { state.skipLogin = true; renderAccount(); });
+$('#sidebarLoginBtn').addEventListener('click', askToSignIn);
 
 $('#logoutBtn').addEventListener('click', async () => {
   await swift.call('auth:logout');
@@ -106,6 +116,7 @@ function setBusy(busy) {
 }
 
 async function play(join) {
+  if (!state.account && !state.info.devOffline) { askToSignIn(); return; }
   $('#notices').replaceChildren();
   $('#gameLog').textContent = '';
   $('#progress').classList.remove('hidden');

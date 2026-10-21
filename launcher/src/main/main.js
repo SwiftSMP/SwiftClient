@@ -6,6 +6,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { paths, loadAppConfig, loadSettings, saveSettings } = require('./config');
 const { Auth } = require('./auth');
+const { validOfflineName, offlineSession } = require('./offline');
 const { Capes } = require('./capes');
 const minecraft = require('./minecraft');
 const mods = require('./mods');
@@ -16,6 +17,11 @@ const auth = new Auth(appConfig.msClientId);
 const capes = new Capes(appConfig.capeApi);
 let win;
 let game = null; // running game process
+
+// Developer testing only: `SWIFTCLIENT_DEV_OFFLINE=<name> npm start` launches without a
+// Microsoft account while Mojang reviews the app registration. Ignored in installed builds.
+const devOffline = !app.isPackaged && validOfflineName(process.env.SWIFTCLIENT_DEV_OFFLINE)
+  ? process.env.SWIFTCLIENT_DEV_OFFLINE : null;
 
 // ---- Discord Rich Presence -------------------------------------------------------
 
@@ -82,6 +88,7 @@ const handlers = {
     server: appConfig.server,
     authConfigured: !!appConfig.msClientId,
     capesEnabled: capes.enabled(),
+    devOffline,
     dataDir: paths.root,
   }),
   'win:minimize': () => win.minimize(),
@@ -148,7 +155,8 @@ async function launch({ join = false } = {}) {
   const mc = settings.version && versions.includes(settings.version) ? settings.version : versions[0];
   const progress = (done, total, label) => send('launch:progress', { done, total, label });
 
-  const session = await auth.playSession();
+  if (!auth.current() && !devOffline) throw new Error('Sign in with the Microsoft account that owns Minecraft to play.');
+  const session = auth.current() ? await auth.playSession() : offlineSession(devOffline);
   progress(0, 1, `Preparing Minecraft ${mc}`);
   const profile = await minecraft.install(mc, progress);
 

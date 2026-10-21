@@ -155,6 +155,15 @@ do not own Minecraft: that would distribute and run Minecraft without a licence,
 EULA, and would put the GitHub releases and the SwiftSMP name at risk of takedowns. Players who use
 other launchers can still join SwiftSMP as before.
 
+Owners can set an **offline name** in Settings → Offline-mode servers to join servers running
+`online-mode=false` under that name. The Microsoft account is still checked before every launch.
+
+Without signing in, the launcher still opens ("Not now" on the sign-in card) so players can set up
+mods and settings; only Play asks for the account.
+
+While Mojang reviews the Azure app registration, developers can test launches from source with
+`SWIFTCLIENT_DEV_OFFLINE=<name> npm start` in `launcher/`. Installed builds ignore this variable.
+
 ## Licenses
 
 SwiftClient's own code is © SwiftSMP. Third-party mods are **not redistributed**: the
