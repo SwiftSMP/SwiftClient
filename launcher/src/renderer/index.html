@@ -14,10 +14,24 @@
       <span class="tag" id="appVersion"></span>
     </div>
     <div class="update hidden" id="updateBanner"></div>
+    <div class="title-right">
+    <div class="acct-menu" id="acctMenu">
+      <button class="acct-btn" id="acctBtn" aria-haspopup="true" aria-expanded="false">
+        <img id="acctHead" alt="">
+        <span class="acct-text"><b id="acctName">Not signed in</b><small id="acctKind"></small></span>
+        <span class="caret">&#9662;</span>
+      </button>
+      <div class="acct-pop hidden" id="acctPop" role="menu">
+        <div id="acctList"></div>
+        <button class="acct-item add" id="acctAddBtn"><span class="plus">+</span> Add account</button>
+        <button class="acct-item signout" id="logoutBtn">Sign out of Microsoft</button>
+      </div>
+    </div>
     <div class="win-controls">
       <button data-win="minimize" title="Minimize">&#x2013;</button>
       <button data-win="maximize" title="Maximize">&#x25A1;</button>
       <button data-win="close" class="close" title="Close">&#x2715;</button>
+    </div>
     </div>
   </header>
 
@@ -28,10 +42,6 @@
       <button class="nav" data-view="cosmetics"><span class="ico">&#9873;</span>Cosmetics</button>
       <button class="nav" data-view="settings"><span class="ico">&#9881;</span>Settings</button>
       <div class="spacer"></div>
-      <div class="account" id="account">
-        <img id="accountHead" alt="">
-        <div><div id="accountName">Not signed in</div><button class="link" id="logoutBtn">Sign out</button><button class="link" id="sidebarLoginBtn">Sign in</button></div>
-      </div>
     </nav>
 
     <main>
@@ -108,13 +118,6 @@
             <div id="optionalMods"></div>
           </div>
           <div class="card">
-            <h3>Offline-mode servers</h3>
-            <label class="check"><input type="checkbox" id="offlineEnabled"> Play with an offline name</label>
-            <label class="field">Offline name <input type="text" id="offlineName" maxlength="16" placeholder="Steve" spellcheck="false"></label>
-            <div class="row mt"><button class="btn ghost" id="offlineSave">Save</button></div>
-            <p class="muted small">For servers with <code>online-mode=false</code>. You still need your Microsoft account that owns Minecraft. Online-mode servers, Realms and SwiftClient capes won't work while this is on.</p>
-          </div>
-          <div class="card">
             <h3>Launcher</h3>
             <label class="check"><input type="checkbox" id="closeOnLaunch"> Hide the launcher while playing</label>
             <label class="check"><input type="checkbox" id="autoJoin"> <span>Join <span class="server-name">SwiftSMP</span> when I press Play</span></label>
@@ -142,6 +145,29 @@
       <p class="error" id="loginError"></p>
       <button class="link" id="skipLoginBtn">Not now, look around first</button>
       <p class="muted small">You sign in on Microsoft's own page. SwiftClient never sees your password.</p>
+    </div>
+  </div>
+
+  <!-- ADD ACCOUNT -->
+  <div class="overlay hidden" id="addOverlay">
+    <div class="login-card add-card">
+      <h2>Add account</h2>
+      <div class="add-tabs" role="tablist">
+        <button class="add-tab active" data-tab="ms" role="tab">Microsoft</button>
+        <button class="add-tab" data-tab="offline" role="tab">Offline name</button>
+      </div>
+      <div class="add-pane" data-pane="ms">
+        <p class="muted">Sign in with the Microsoft account that owns Minecraft: Java Edition. SwiftClient keeps one Microsoft account; signing in with another one replaces it.</p>
+        <button class="btn primary" id="addMsBtn">Sign in with Microsoft</button>
+      </div>
+      <div class="add-pane hidden" data-pane="offline">
+        <p class="muted">Play under another name on servers with <code>online-mode=false</code>. Online-mode servers, Realms and SwiftClient capes don't work with offline names.</p>
+        <input type="text" id="addOfflineName" maxlength="16" placeholder="Username" spellcheck="false">
+        <button class="btn primary" id="addOfflineBtn">Add</button>
+        <p class="muted small" id="addOfflineNeedsMs">Sign in with a Microsoft account that owns Minecraft first. Offline names are added on top of it.</p>
+      </div>
+      <p class="error" id="addError"></p>
+      <button class="link" id="addCancel">Cancel</button>
     </div>
   </div>
 

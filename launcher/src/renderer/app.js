@@ -40,52 +40,132 @@ $$('.nav').forEach((n) => n.addEventListener('click', () => show(n.dataset.view)
 
 // ---- account ---------------------------------------------------------------------
 
+const STEVE_HEAD = 'https://mc-heads.net/avatar/MHF_Steve/64';
+
+function acctItem({ head, name, kind, active, onPick, onRemove }) {
+  const item = el('button', { className: `acct-item${active ? ' active' : ''}${onPick ? '' : ' static'}`, role: 'menuitem' },
+    el('img', { src: head, alt: '' }),
+    el('span', { className: 'grow' }, el('b', { textContent: name }), el('small', { textContent: kind })));
+  if (active) item.append(el('span', { className: 'check-mark', textContent: '✓' }));
+  if (onPick) item.addEventListener('click', onPick);
+  if (onRemove) {
+    const x = el('span', { className: 'remove', title: `Remove ${name}`, textContent: '✕' });
+    x.addEventListener('click', (e) => { e.stopPropagation(); onRemove(); });
+    item.append(x);
+  }
+  return item;
+}
+
 function renderAccount() {
   const a = state.account;
   const dev = state.info && state.info.devOffline;
   $('#loginOverlay').classList.toggle('hidden', !!a || !!dev || state.skipLogin);
-  $('#accountName').textContent = a ? (a.offlineName ? `${a.offlineName} (offline)` : a.name)
-    : dev ? `${dev} (dev offline)` : 'Not signed in';
-  $('#accountHead').src = a ? `https://mc-heads.net/avatar/${a.uuid}/64` : 'img/logo.png';
+
+  const offline = a && a.active;
+  $('#acctName').textContent = a ? (offline || a.name) : dev || 'Not signed in';
+  $('#acctKind').textContent = a ? (offline ? 'Offline' : 'Microsoft') : dev ? 'Dev offline' : 'Add an account';
+  $('#acctHead').src = a && !offline ? `https://mc-heads.net/avatar/${a.uuid}/64` : (offline || dev) ? STEVE_HEAD : 'img/logo.png';
   $('#logoutBtn').classList.toggle('hidden', !a);
-  $('#sidebarLoginBtn').classList.toggle('hidden', !!a || !!dev);
-  $('#offlineEnabled').checked = !!(a && a.offlineName);
-  $('#offlineName').value = (a && a.offlineName) || '';
+
+  const items = [];
+  if (a) {
+    items.push(acctItem({ head: `https://mc-heads.net/avatar/${a.uuid}/64`, name: a.name, kind: 'Microsoft', active: !a.active, onPick: () => useAccount(null) }));
+    for (const n of a.offlineNames) {
+      items.push(acctItem({ head: STEVE_HEAD, name: n, kind: 'Offline', active: a.active === n, onPick: () => useAccount(n), onRemove: () => removeOffline(n) }));
+    }
+  } else if (dev) {
+    items.push(acctItem({ head: STEVE_HEAD, name: dev, kind: 'Dev offline (from source only)', active: true }));
+  }
+  $('#acctList').replaceChildren(...items);
 }
 
-$('#offlineSave').addEventListener('click', async () => {
-  const name = $('#offlineEnabled').checked ? $('#offlineName').value.trim() : null;
+async function accountCall(channel, arg, message) {
   try {
-    state.account = await swift.call('auth:offlineName', name);
+    state.account = await swift.call(channel, arg);
     renderAccount();
-    toast(name ? `Playing offline as ${name}` : `Playing as ${state.account.name}`);
+    if (message) toast(message(state.account));
   } catch (e) {
     toast(e.message, true);
   }
-});
+}
+const useAccount = (name) => { closeAcctMenu(); return accountCall('auth:use', name, (a) => `Playing as ${a.active || a.name}`); };
+const removeOffline = (name) => accountCall('auth:removeOffline', name, () => `Removed ${name}`);
 
-$('#loginBtn').addEventListener('click', async () => {
-  $('#loginError').textContent = '';
-  $('#loginBtn').disabled = true;
+function closeAcctMenu() {
+  $('#acctPop').classList.add('hidden');
+  $('#acctBtn').setAttribute('aria-expanded', 'false');
+}
+$('#acctBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = $('#acctPop').classList.toggle('hidden');
+  $('#acctBtn').setAttribute('aria-expanded', String(!open));
+});
+$('#acctPop').addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', closeAcctMenu);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAcctMenu(); closeAddAccount(); } });
+
+// Add account dialog: Microsoft, or an offline name on top of the Microsoft account.
+function showAddTab(tab) {
+  $$('.add-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
+  $$('.add-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== tab));
+  const needsMs = !state.account;
+  $('#addOfflineName').disabled = needsMs;
+  $('#addOfflineBtn').disabled = needsMs;
+  $('#addOfflineNeedsMs').classList.toggle('hidden', !needsMs);
+  if (tab === 'offline' && !needsMs) $('#addOfflineName').focus();
+}
+function openAddAccount() {
+  closeAcctMenu();
+  $('#addError').textContent = '';
+  $('#addOfflineName').value = '';
+  $('#addOverlay').classList.remove('hidden');
+  showAddTab(state.account ? 'offline' : 'ms');
+}
+function closeAddAccount() { $('#addOverlay').classList.add('hidden'); }
+$$('.add-tab').forEach((t) => t.addEventListener('click', () => showAddTab(t.dataset.tab)));
+$('#acctAddBtn').addEventListener('click', openAddAccount);
+$('#addCancel').addEventListener('click', closeAddAccount);
+
+async function addOffline() {
+  $('#addError').textContent = '';
+  try {
+    state.account = await swift.call('auth:addOffline', $('#addOfflineName').value);
+    renderAccount();
+    closeAddAccount();
+    toast(`Playing offline as ${state.account.active}`);
+  } catch (e) {
+    $('#addError').textContent = e.message;
+  }
+}
+$('#addOfflineBtn').addEventListener('click', addOffline);
+$('#addOfflineName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addOffline(); });
+
+async function signIn(button, errorBox) {
+  errorBox.textContent = '';
+  button.disabled = true;
   try {
     state.account = await swift.call('auth:login');
     renderAccount();
     toast(`Signed in as ${state.account.name}`);
+    return true;
   } catch (e) {
-    $('#loginError').textContent = e.message;
+    errorBox.textContent = e.message;
+    return false;
   } finally {
-    $('#loginBtn').disabled = false;
+    button.disabled = false;
   }
-});
+}
+$('#loginBtn').addEventListener('click', () => signIn($('#loginBtn'), $('#loginError')));
+$('#addMsBtn').addEventListener('click', async () => { if (await signIn($('#addMsBtn'), $('#addError'))) closeAddAccount(); });
 
 function askToSignIn() {
   state.skipLogin = false;
   renderAccount();
 }
 $('#skipLoginBtn').addEventListener('click', () => { state.skipLogin = true; renderAccount(); });
-$('#sidebarLoginBtn').addEventListener('click', askToSignIn);
 
 $('#logoutBtn').addEventListener('click', async () => {
+  closeAcctMenu();
   await swift.call('auth:logout');
   state.account = null;
   renderAccount();

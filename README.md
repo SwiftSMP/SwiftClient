@@ -155,8 +155,10 @@ do not own Minecraft: that would distribute and run Minecraft without a licence,
 EULA, and would put the GitHub releases and the SwiftSMP name at risk of takedowns. Players who use
 other launchers can still join SwiftSMP as before.
 
-Owners can set an **offline name** in Settings → Offline-mode servers to join servers running
-`online-mode=false` under that name. The Microsoft account is still checked before every launch.
+The account menu in the title bar works like other launchers: **Add account** offers a Microsoft
+sign-in or an **offline name** for servers running `online-mode=false`, and saved names switch with
+one click. Offline names can only be added on top of a Microsoft account that owns Minecraft, and
+that account is still checked before every launch.
 
 Without signing in, the launcher still opens ("Not now" on the sign-in card) so players can set up
 mods and settings; only Play asks for the account.

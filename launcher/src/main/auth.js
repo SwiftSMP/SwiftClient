@@ -163,12 +163,19 @@ function saveAccount(account) {
 
 function readAccount() {
   try {
-    return JSON.parse(safeStorage.decryptString(fs.readFileSync(paths.account)));
+    return migrate(JSON.parse(safeStorage.decryptString(fs.readFileSync(paths.account))));
   } catch { return null; }
 }
 
+// 0.1.x stored a single `offlineName`; now there is a list and the active one (null = Microsoft).
+function migrate(a) {
+  if (!a || a.offlineNames) return a;
+  const { offlineName, ...rest } = a;
+  return { ...rest, offlineNames: offlineName ? [offlineName] : [], active: offlineName || null };
+}
+
 function publicAccount(a) {
-  return a ? { uuid: a.mc.uuid, name: a.mc.name, offlineName: a.offlineName || null } : null;
+  return a ? { uuid: a.mc.uuid, name: a.mc.name, offlineNames: a.offlineNames, active: a.active } : null;
 }
 
 // ---- API --------------------------------------------------------------------
@@ -188,7 +195,13 @@ class Auth {
     const { code, verifier } = await interactiveLogin(this.clientId, parent);
     const ms = await msToken(this.clientId, { grant_type: 'authorization_code', code, code_verifier: verifier });
     const mc = await minecraftFromMsAccessToken(ms.access_token);
-    this.account = { refreshToken: ms.refresh_token, mc };
+    // Signing in again with the same Microsoft account keeps its offline names.
+    const same = this.account && this.account.mc.uuid === mc.uuid;
+    this.account = {
+      refreshToken: ms.refresh_token, mc,
+      offlineNames: same ? this.account.offlineNames : [],
+      active: same ? this.account.active : null,
+    };
     saveAccount(this.account);
     return publicAccount(this.account);
   }
@@ -210,19 +223,36 @@ class Auth {
     return mc;
   }
 
-  /** Name to use on offline-mode servers, or null to play as the Microsoft account. */
-  setOfflineName(name) {
+  update(patch) {
     if (!this.account) throw new Error('Sign in with the Microsoft account that owns Minecraft first.');
-    if (name && !validOfflineName(name)) throw new Error('Names are 3 to 16 letters, numbers or underscores.');
-    this.account = { ...this.account, offlineName: name || null };
+    this.account = { ...this.account, ...patch };
     saveAccount(this.account);
     return publicAccount(this.account);
   }
 
-  /** Session to launch the game with: the Microsoft one, or the offline name on top of it. */
+  /** Saves an offline name for offline-mode servers and switches to it. */
+  addOfflineName(name) {
+    if (!validOfflineName(name)) throw new Error('Names are 3 to 16 letters, numbers or underscores.');
+    const names = (this.account && this.account.offlineNames) || [];
+    const existing = names.find((n) => n.toLowerCase() === name.toLowerCase());
+    return this.update({ offlineNames: existing ? names : [...names, name], active: existing || name });
+  }
+
+  removeOfflineName(name) {
+    const names = ((this.account && this.account.offlineNames) || []).filter((n) => n !== name);
+    return this.update({ offlineNames: names, active: this.account.active === name ? null : this.account.active });
+  }
+
+  /** Switches to a saved offline name, or back to the Microsoft account with null. */
+  use(name) {
+    if (name !== null && !((this.account && this.account.offlineNames) || []).includes(name)) throw new Error('Unknown account.');
+    return this.update({ active: name });
+  }
+
+  /** Session to launch the game with: the Microsoft one, or the active offline name on top of it. */
   async playSession() {
     const mc = await this.session(); // still proves the account owns Minecraft
-    return this.account.offlineName ? offlineSession(this.account.offlineName) : mc;
+    return this.account.active ? offlineSession(this.account.active) : mc;
   }
 
   async logout() {

@@ -106,7 +106,9 @@ const handlers = {
   'auth:current': () => auth.current(),
   'auth:login': () => auth.login(win),
   'auth:logout': () => auth.logout(),
-  'auth:offlineName': (_e, name) => auth.setOfflineName(name),
+  'auth:addOffline': (_e, name) => auth.addOfflineName(String(name || '').trim()),
+  'auth:removeOffline': (_e, name) => auth.removeOfflineName(name),
+  'auth:use': (_e, name) => auth.use(name),
 
   'settings:get': () => loadSettings(),
   'settings:set': (_e, s) => { const r = saveSettings(s); updatePresence(); return r; },

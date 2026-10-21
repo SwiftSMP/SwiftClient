@@ -88,6 +88,49 @@ code { font-family: var(--mono); color: var(--accent-bright); }
   background: rgba(255, 200, 61, 0.08); border-radius: 999px; padding: 4px 12px; cursor: pointer;
 }
 
+/* account dropdown (title bar) */
+.title-right { display: flex; align-items: center; height: 100%; gap: 8px; -webkit-app-region: no-drag; }
+.acct-menu { position: relative; }
+.acct-btn {
+  display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px 0 4px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font: 13px var(--body);
+}
+.acct-btn:hover, .acct-btn[aria-expanded="true"] { border-color: var(--accent); }
+.acct-btn img, .acct-item img { width: 26px; height: 26px; border-radius: 5px; image-rendering: pixelated; background: var(--surface-3); }
+.acct-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; white-space: nowrap; }
+.acct-text b { font-weight: 600; font-size: 13px; }
+.acct-text small, .acct-item small { color: var(--muted); font-size: 11px; }
+.caret { color: var(--muted); font-size: 11px; }
+.acct-pop {
+  position: absolute; right: 0; top: calc(100% + 6px); width: 260px; padding: 6px; z-index: 30;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--e-2);
+}
+.acct-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--text); font: 13px var(--body); text-align: left; cursor: pointer;
+}
+.acct-item:hover { background: var(--surface-2); }
+.acct-item.active { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.acct-item .grow { flex: 1; display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.acct-item .grow b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.acct-item .check-mark { color: var(--accent); }
+.acct-item .remove { border: 0; background: none; color: var(--faint); cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 6px; }
+.acct-item .remove:hover { color: var(--danger); background: var(--surface-3); }
+.acct-item.add { color: var(--accent-bright); border-top: 1px solid var(--border-soft); border-radius: 0 0 8px 8px; margin-top: 4px; }
+.acct-item.add .plus { width: 26px; text-align: center; font-size: 18px; }
+.acct-item.signout { color: var(--muted); font-size: 12px; padding: 6px 8px 6px 44px; }
+.acct-item.static { cursor: default; }
+.acct-item.static:hover { background: transparent; }
+
+/* add account dialog */
+.add-card { width: 420px; text-align: left; }
+.add-card h2 { margin-bottom: 14px; }
+.add-tabs { display: flex; gap: 4px; padding: 4px; background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: 10px; }
+.add-tab { flex: 1; padding: 8px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 600 13px var(--body); cursor: pointer; }
+.add-tab.active { background: var(--surface-3); color: var(--text); }
+.add-pane input { margin-top: 4px; font-family: var(--body); font-size: 14px; }
+.add-card .btn { margin: 14px 0 4px; font-size: 15px; padding: 10px 22px; }
+
 /* layout */
 .shell { display: flex; height: calc(100% - 46px); }
 .sidebar {
@@ -104,9 +147,6 @@ code { font-family: var(--mono); color: var(--accent-bright); }
 .nav.active { background: var(--surface-2); color: var(--text); border-color: var(--border); box-shadow: inset 3px 0 0 var(--accent); }
 .nav.active .ico { color: var(--accent); }
 .spacer { flex: 1; }
-.account { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--border); }
-.account img { width: 34px; height: 34px; border-radius: 6px; image-rendering: pixelated; background: var(--surface-3); }
-#accountName { font-weight: 600; font-size: 13px; }
 .link { background: none; border: 0; padding: 0; color: var(--accent-bright); font: 12px var(--body); cursor: pointer; }
 .link:hover { color: var(--gold); }
 
