@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "swiftclient-capes",
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": false,
+  // Route on the existing proxied DNS record for capes.swiftsmp.com.
+  "routes": [{ "pattern": "capes.swiftsmp.com/*", "zone_name": "swiftsmp.com" }],
+  // Cape PNGs come from ../capes; the Worker handles every request and fetches them itself.
+  "assets": { "directory": "../capes", "binding": "ASSETS", "run_worker_first": true },
+  // Created with `npx wrangler kv namespace create CAPES`.
+  "kv_namespaces": [{ "binding": "CAPES", "id": "a3e03bc1b6a346a0b158617f2128a561" }]
+}

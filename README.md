@@ -60,7 +60,7 @@ Item components are only bound once a world loads, so the title screen cannot dr
    2. In *Authentication* enable **Allow public client flows**. No client secret is needed.
    3. New apps must be approved for the Minecraft API: submit the form at <https://aka.ms/mce-reviewappid> with the Application (client) ID. Until Mojang approves it, sign-in fails at the last step with HTTP 403.
    4. Put the client ID in `launcher/swiftclient.config.json` → `msClientId`.
-2. **Cape server**: deploy `cape-server/` (see below) at e.g. `https://capes.swiftsmp.net` and set `capeApi`.
+2. **Cape server**: deploy the Cloudflare Worker in `cape-server/worker/` (see below) to `https://capes.swiftsmp.com`, the default `capeApi`.
 3. **Discord**: <https://discord.com/developers/applications> → New Application named **SwiftClient** (Discord shows "Playing SwiftClient"). In *Rich Presence → Art Assets* upload the logo with the key `logo`. Put the Application ID in `discordClientId`.
 4. **Releases**: create the GitHub repository the updater reads (currently `SwiftSMP/SwiftClient` in `launcher/package.json` → `build.publish` and `repository`; change both if it lives elsewhere). It must be **public** so players can download installers and updates. The website links to `https://github.com/SwiftSMP/SwiftClient/releases/latest/download/SwiftClient-Setup.exe`; update `CLIENT_DOWNLOAD` in the website's `app.js` and `SeoPages.java` if you change the repo.
 
@@ -69,7 +69,7 @@ Item components are only bound once a world loads, so the title screen cannot dr
 ```json
 {
   "msClientId": "00000000-0000-0000-0000-000000000000",
-  "capeApi": "https://capes.swiftsmp.net",
+  "capeApi": "https://capes.swiftsmp.com",
   "discordClientId": "000000000000000000",
   "server": { "name": "SwiftSMP", "address": "swiftsmp.net" },
   "website": "https://swiftsmp.com",
@@ -134,17 +134,24 @@ mixins must be ported to Yarn/intermediary mappings (`PlayerSkin`/`SkinTextures`
 
 ## Cape server
 
+Runs as a Cloudflare Worker on `capes.swiftsmp.com` (`cape-server/worker/`). Capes are stored in
+Workers KV and the PNGs ship with the Worker.
+
 ```bash
-cd cape-server
-node server.js            # PORT=8765 HOST=127.0.0.1 by default
+cd cape-server/worker
+npm install
+npx wrangler login                          # once, in your browser
+npx wrangler kv namespace create CAPES      # once: put the id in wrangler.jsonc
+npx wrangler deploy                         # also after editing capes/
 ```
 
-Zero dependencies. Put it behind your existing reverse proxy with HTTPS (Caddy/nginx), e.g.
-`capes.swiftsmp.net → 127.0.0.1:8765`, and run it with systemd or pm2.
+- Catalog: `capes/catalog.json` + `capes/<id>.png` (64×32 Minecraft cape layout; HD 128×64 works too). Regenerate the defaults with `python tools/make_capes.py`, then deploy again.
+- `"public": true` capes are free for everyone. Others need a grant in the KV key `grants`, e.g.
+  `npx wrangler kv key put --remote --binding CAPES grants '{"<uuid without dashes>": ["staff", "founder"]}'`. No redeploy needed.
+- Selections are stored as `sel:<uuid>` keys, challenges as `ch:<serverId>` (2-minute TTL).
 
-- Catalog: `capes/catalog.json` + `capes/<id>.png` (64×32 Minecraft cape layout; HD 128×64 works too). Regenerate the defaults with `python tools/make_capes.py`.
-- `"public": true` capes are free for everyone. Others need a grant in `data/grants.json`: `{"<uuid without dashes>": ["staff", "founder"]}` (read on every request, no restart needed).
-- Selections are stored in `data/selections.json`.
+`cape-server/server.js` is the same API as a plain Node server (`PORT=8765 HOST=127.0.0.1` by
+default, data in `data/`) if you would rather host it yourself behind a reverse proxy.
 
 API: `GET /capes`, `GET /capes/<id>.png`, `GET /players/<uuid>.json`, `GET /players/<uuid>/available`, `POST /auth/challenge`, `POST /select {name, serverId, cape}`.
 

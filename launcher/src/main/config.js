@@ -28,7 +28,7 @@ const DEFAULT_APP_CONFIG = {
   // Must be approved by Mojang for the Minecraft services API. See README.
   msClientId: '',
   // Base URL of the SwiftClient cape server (cape-server/). Empty disables shared capes.
-  capeApi: 'https://capes.swiftsmp.net',
+  capeApi: 'https://capes.swiftsmp.com',
   // Featured server shown on the play screen.
   server: { name: 'SwiftSMP', address: 'swiftsmp.net' },
   // Discord application id for Rich Presence (discord.com/developers). Empty disables it.

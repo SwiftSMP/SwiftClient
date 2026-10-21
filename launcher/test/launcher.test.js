@@ -156,3 +156,40 @@ test('offline names get the same UUID offline-mode servers assign', () => {
   assert.ok(!validOfflineName('a'.repeat(17)));
   assert.strictEqual(offlineSession('Steve').userType, 'legacy');
 });
+
+test('cape Worker serves the catalog and verifies players through hasJoined', async () => {
+  const { handle } = await import('../../cape-server/worker/src/index.js');
+  const store = new Map([['grants', JSON.stringify({ '069a79f444e94726a5befca90e38aaf5': ['staff'] })]]);
+  const env = {
+    CAPES: {
+      get: async (k, type) => (store.has(k) ? (type === 'json' ? JSON.parse(store.get(k)) : store.get(k)) : null),
+      put: async (k, v) => { store.set(k, v); },
+      delete: async (k) => { store.delete(k); },
+    },
+    ASSETS: { fetch: async (u) => new Response(`png:${new URL(u).pathname}`) },
+    SESSION_SERVER: 'https://session.test',
+  };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u) => (String(u).includes('username=Notch')
+    ? new Response(JSON.stringify({ id: '069a79f444e94726a5befca90e38aaf5', name: 'Notch' }))
+    : new Response(null, { status: 204 }));
+  try {
+    const req = (p, body) => handle(new Request(`https://capes.test${p}`, body ? { method: 'POST', body: JSON.stringify(body) } : {}), env);
+    const json = async (p, body) => { const r = await req(p, body); return { status: r.status, body: await r.json() }; };
+    const capes = (await json('/capes')).body;
+    assert.ok(capes.some((c) => c.id === 'swift' && c.public));
+    assert.strictEqual(await (await req('/capes/swift.png')).text(), 'png:/swift.png');
+    assert.strictEqual((await req('/capes/nope.png')).status, 404);
+    const challenge = async () => (await json('/auth/challenge', {})).body.serverId;
+    assert.strictEqual((await json('/select', { name: 'Herobrine', serverId: await challenge(), cape: 'swift' })).status, 403, 'unverified player refused');
+    assert.strictEqual((await json('/select', { name: 'Notch', serverId: 'f'.repeat(32), cape: 'swift' })).status, 400, 'unknown challenge refused');
+    const id = await challenge();
+    assert.strictEqual((await json('/select', { name: 'Notch', serverId: id, cape: 'staff' })).status, 200, 'granted cape allowed');
+    assert.strictEqual((await json('/select', { name: 'Notch', serverId: id, cape: 'staff' })).status, 400, 'challenge is single-use');
+    assert.deepStrictEqual((await json('/players/069a79f4-44e9-4726-a5be-fca90e38aaf5.json')).body, { cape: 'staff', url: '/capes/staff.png' });
+    assert.strictEqual((await json('/select', { name: 'Notch', serverId: await challenge(), cape: 'founder' })).status, 403, 'locked cape refused');
+    assert.strictEqual((await json('/players/069a79f444e94726a5befca90e38aaf5/available')).body.selected, 'staff');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
