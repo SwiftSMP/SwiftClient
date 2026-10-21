@@ -162,16 +162,13 @@ do not own Minecraft: that would distribute and run Minecraft without a licence,
 EULA, and would put the GitHub releases and the SwiftSMP name at risk of takedowns. Players who use
 other launchers can still join SwiftSMP as before.
 
-The account menu in the title bar works like other launchers: **Add account** offers a Microsoft
-sign-in or an **offline name** for servers running `online-mode=false`, and saved names switch with
-one click. Offline names can only be added on top of a Microsoft account that owns Minecraft, and
-that account is still checked before every launch.
+The account menu in the title bar shows the signed-in Microsoft account, **Add account** (Microsoft
+sign-in) and **Sign out**. There are no offline names.
 
 Without signing in, the launcher still opens ("Not now" on the sign-in card) so players can set up
 mods and settings; only Play asks for the account.
 
-While Mojang reviews the Azure app registration, developers can test launches from source with
-`SWIFTCLIENT_DEV_OFFLINE=<name> npm start` in `launcher/`. Installed builds ignore this variable.
+To test game launches without signing in, use `node scripts/smoke-install.js` (see Building).
 
 ## Licenses
 

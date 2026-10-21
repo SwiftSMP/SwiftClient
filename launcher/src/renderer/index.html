@@ -152,19 +152,9 @@
   <div class="overlay hidden" id="addOverlay">
     <div class="login-card add-card">
       <h2>Add account</h2>
-      <div class="add-tabs" role="tablist">
-        <button class="add-tab active" data-tab="ms" role="tab">Microsoft</button>
-        <button class="add-tab" data-tab="offline" role="tab">Offline name</button>
-      </div>
-      <div class="add-pane" data-pane="ms">
+      <div class="add-pane">
         <p class="muted">Sign in with the Microsoft account that owns Minecraft: Java Edition. SwiftClient keeps one Microsoft account; signing in with another one replaces it.</p>
         <button class="btn primary" id="addMsBtn">Sign in with Microsoft</button>
-      </div>
-      <div class="add-pane hidden" data-pane="offline">
-        <p class="muted">Play under another name on servers with <code>online-mode=false</code>. Online-mode servers, Realms and SwiftClient capes don't work with offline names.</p>
-        <input type="text" id="addOfflineName" maxlength="16" placeholder="Username" spellcheck="false">
-        <button class="btn primary" id="addOfflineBtn">Add</button>
-        <p class="muted small" id="addOfflineNeedsMs">Sign in with a Microsoft account that owns Minecraft first. Offline names are added on top of it.</p>
       </div>
       <p class="error" id="addError"></p>
       <button class="link" id="addCancel">Cancel</button>

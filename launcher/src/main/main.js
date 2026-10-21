@@ -6,7 +6,6 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { paths, loadAppConfig, loadSettings, saveSettings } = require('./config');
 const { Auth } = require('./auth');
-const { validOfflineName, offlineSession } = require('./offline');
 const { Capes } = require('./capes');
 const minecraft = require('./minecraft');
 const mods = require('./mods');
@@ -17,11 +16,6 @@ const auth = new Auth(appConfig.msClientId);
 const capes = new Capes(appConfig.capeApi);
 let win;
 let game = null; // running game process
-
-// Developer testing only: `SWIFTCLIENT_DEV_OFFLINE=<name> npm start` launches without a
-// Microsoft account while Mojang reviews the app registration. Ignored in installed builds.
-const devOffline = !app.isPackaged && validOfflineName(process.env.SWIFTCLIENT_DEV_OFFLINE)
-  ? process.env.SWIFTCLIENT_DEV_OFFLINE : null;
 
 // ---- Discord Rich Presence -------------------------------------------------------
 
@@ -88,7 +82,6 @@ const handlers = {
     server: appConfig.server,
     authConfigured: !!appConfig.msClientId,
     capesEnabled: capes.enabled(),
-    devOffline,
     dataDir: paths.root,
   }),
   'win:minimize': () => win.minimize(),
@@ -106,9 +99,6 @@ const handlers = {
   'auth:current': () => auth.current(),
   'auth:login': () => auth.login(win),
   'auth:logout': () => auth.logout(),
-  'auth:addOffline': (_e, name) => auth.addOfflineName(String(name || '').trim()),
-  'auth:removeOffline': (_e, name) => auth.removeOfflineName(name),
-  'auth:use': (_e, name) => auth.use(name),
 
   'settings:get': () => loadSettings(),
   'settings:set': (_e, s) => { const r = saveSettings(s); updatePresence(); return r; },
@@ -157,15 +147,14 @@ async function launch({ join = false } = {}) {
   const mc = settings.version && versions.includes(settings.version) ? settings.version : versions[0];
   const progress = (done, total, label) => send('launch:progress', { done, total, label });
 
-  if (!auth.current() && !devOffline) throw new Error('Sign in with the Microsoft account that owns Minecraft to play.');
-  const session = auth.current() ? await auth.playSession() : offlineSession(devOffline);
+  if (!auth.current()) throw new Error('Sign in with the Microsoft account that owns Minecraft to play.');
+  const session = await auth.session();
   progress(0, 1, `Preparing Minecraft ${mc}`);
   const profile = await minecraft.install(mc, progress);
 
   const swiftMod = swiftModFor(mc);
   const result = await mods.syncMods(mc, settings, { swiftMod, onProgress: progress });
   if (result.unavailable.length) send('launch:notice', `Not available for ${mc} yet: ${result.unavailable.join(', ')}`);
-  if (session.offline) send('launch:notice', `Playing offline as ${session.name}: only servers with online-mode=false will let you in.`);
   if (!swiftMod) send('launch:notice', `SwiftClient capes and branding are not available for ${mc} yet.`);
 
   const gameDir = paths.instance(mc);
@@ -179,7 +168,7 @@ async function launch({ join = false } = {}) {
   const logFile = path.join(paths.logs, 'latest-launch.log');
   const log = fs.createWriteStream(logFile);
   log.write(`SwiftClient ${app.getVersion()} launching ${profile.id}\n`);
-  log.write(`${cmd.java} ${cmd.args.map((a) => (!session.offline && a.includes(session.accessToken) ? '<token>' : a)).join(' ')}\n\n`);
+  log.write(`${cmd.java} ${cmd.args.map((a) => (a.includes(session.accessToken) ? '<token>' : a)).join(' ')}\n\n`);
 
   progress(1, 1, 'Starting Minecraft');
   updatePresence({ phase: 'starting', server: null });

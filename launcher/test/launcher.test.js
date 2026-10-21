@@ -145,18 +145,6 @@ test('cape server verifies players through hasJoined', async () => {
   server.close();
   mojang.close();
 });
-
-test('offline names get the same UUID offline-mode servers assign', () => {
-  const { offlineUuid, validOfflineName, offlineSession } = require('../src/main/offline');
-  // Known value: UUID.nameUUIDFromBytes("OfflinePlayer:Notch")
-  assert.strictEqual(offlineUuid('Notch'), 'b50ad385829d3141a2167e7d7539ba7f');
-  assert.ok(validOfflineName('Steve_01'));
-  assert.ok(!validOfflineName('ab'));
-  assert.ok(!validOfflineName('has space'));
-  assert.ok(!validOfflineName('a'.repeat(17)));
-  assert.strictEqual(offlineSession('Steve').userType, 'legacy');
-});
-
 test('cape Worker serves the catalog and verifies players through hasJoined', async () => {
   const { handle } = await import('../../cape-server/worker/src/index.js');
   const store = new Map([['grants', JSON.stringify({ '069a79f444e94726a5befca90e38aaf5': ['staff'] })]]);

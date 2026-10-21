@@ -40,56 +40,28 @@ $$('.nav').forEach((n) => n.addEventListener('click', () => show(n.dataset.view)
 
 // ---- account ---------------------------------------------------------------------
 
-const STEVE_HEAD = 'https://mc-heads.net/avatar/MHF_Steve/64';
-
-function acctItem({ head, name, kind, active, onPick, onRemove }) {
+function acctItem({ head, name, kind, active, onPick }) {
   const item = el('button', { className: `acct-item${active ? ' active' : ''}${onPick ? '' : ' static'}`, role: 'menuitem' },
     el('img', { src: head, alt: '' }),
     el('span', { className: 'grow' }, el('b', { textContent: name }), el('small', { textContent: kind })));
   if (active) item.append(el('span', { className: 'check-mark', textContent: '✓' }));
   if (onPick) item.addEventListener('click', onPick);
-  if (onRemove) {
-    const x = el('span', { className: 'remove', title: `Remove ${name}`, textContent: '✕' });
-    x.addEventListener('click', (e) => { e.stopPropagation(); onRemove(); });
-    item.append(x);
-  }
   return item;
 }
 
 function renderAccount() {
   const a = state.account;
-  const dev = state.info && state.info.devOffline;
-  $('#loginOverlay').classList.toggle('hidden', !!a || !!dev || state.skipLogin);
+  $('#loginOverlay').classList.toggle('hidden', !!a || state.skipLogin);
 
-  const offline = a && a.active;
-  $('#acctName').textContent = a ? (offline || a.name) : dev || 'Not signed in';
-  $('#acctKind').textContent = a ? (offline ? 'Offline' : 'Microsoft') : dev ? 'Dev offline' : 'Add an account';
-  $('#acctHead').src = a && !offline ? `https://mc-heads.net/avatar/${a.uuid}/64` : (offline || dev) ? STEVE_HEAD : 'img/logo.png';
+  $('#acctName').textContent = a ? a.name : 'Not signed in';
+  $('#acctKind').textContent = a ? 'Microsoft' : 'Add an account';
+  $('#acctHead').src = a ? `https://mc-heads.net/avatar/${a.uuid}/64` : 'img/logo.png';
   $('#logoutBtn').classList.toggle('hidden', !a);
 
   const items = [];
-  if (a) {
-    items.push(acctItem({ head: `https://mc-heads.net/avatar/${a.uuid}/64`, name: a.name, kind: 'Microsoft', active: !a.active, onPick: () => useAccount(null) }));
-    for (const n of a.offlineNames) {
-      items.push(acctItem({ head: STEVE_HEAD, name: n, kind: 'Offline', active: a.active === n, onPick: () => useAccount(n), onRemove: () => removeOffline(n) }));
-    }
-  } else if (dev) {
-    items.push(acctItem({ head: STEVE_HEAD, name: dev, kind: 'Dev offline (from source only)', active: true }));
-  }
+  if (a) items.push(acctItem({ head: `https://mc-heads.net/avatar/${a.uuid}/64`, name: a.name, kind: 'Microsoft', active: true }));
   $('#acctList').replaceChildren(...items);
 }
-
-async function accountCall(channel, arg, message) {
-  try {
-    state.account = await swift.call(channel, arg);
-    renderAccount();
-    if (message) toast(message(state.account));
-  } catch (e) {
-    toast(e.message, true);
-  }
-}
-const useAccount = (name) => { closeAcctMenu(); return accountCall('auth:use', name, (a) => `Playing as ${a.active || a.name}`); };
-const removeOffline = (name) => accountCall('auth:removeOffline', name, () => `Removed ${name}`);
 
 function closeAcctMenu() {
   $('#acctPop').classList.add('hidden');
@@ -104,41 +76,15 @@ $('#acctPop').addEventListener('click', (e) => e.stopPropagation());
 document.addEventListener('click', closeAcctMenu);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAcctMenu(); closeAddAccount(); } });
 
-// Add account dialog: Microsoft, or an offline name on top of the Microsoft account.
-function showAddTab(tab) {
-  $$('.add-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
-  $$('.add-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== tab));
-  const needsMs = !state.account;
-  $('#addOfflineName').disabled = needsMs;
-  $('#addOfflineBtn').disabled = needsMs;
-  $('#addOfflineNeedsMs').classList.toggle('hidden', !needsMs);
-  if (tab === 'offline' && !needsMs) $('#addOfflineName').focus();
-}
+// Add account dialog: Microsoft sign-in.
 function openAddAccount() {
   closeAcctMenu();
   $('#addError').textContent = '';
-  $('#addOfflineName').value = '';
   $('#addOverlay').classList.remove('hidden');
-  showAddTab(state.account ? 'offline' : 'ms');
 }
 function closeAddAccount() { $('#addOverlay').classList.add('hidden'); }
-$$('.add-tab').forEach((t) => t.addEventListener('click', () => showAddTab(t.dataset.tab)));
 $('#acctAddBtn').addEventListener('click', openAddAccount);
 $('#addCancel').addEventListener('click', closeAddAccount);
-
-async function addOffline() {
-  $('#addError').textContent = '';
-  try {
-    state.account = await swift.call('auth:addOffline', $('#addOfflineName').value);
-    renderAccount();
-    closeAddAccount();
-    toast(`Playing offline as ${state.account.active}`);
-  } catch (e) {
-    $('#addError').textContent = e.message;
-  }
-}
-$('#addOfflineBtn').addEventListener('click', addOffline);
-$('#addOfflineName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addOffline(); });
 
 async function signIn(button, errorBox) {
   errorBox.textContent = '';
@@ -196,7 +142,7 @@ function setBusy(busy) {
 }
 
 async function play(join) {
-  if (!state.account && !state.info.devOffline) { askToSignIn(); return; }
+  if (!state.account) { askToSignIn(); return; }
   $('#notices').replaceChildren();
   $('#gameLog').textContent = '';
   $('#progress').classList.remove('hidden');
