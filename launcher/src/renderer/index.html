@@ -108,6 +108,13 @@
             <div id="optionalMods"></div>
           </div>
           <div class="card">
+            <h3>Offline-mode servers</h3>
+            <label class="check"><input type="checkbox" id="offlineEnabled"> Play with an offline name</label>
+            <label class="field">Offline name <input type="text" id="offlineName" maxlength="16" placeholder="Steve" spellcheck="false"></label>
+            <div class="row mt"><button class="btn ghost" id="offlineSave">Save</button></div>
+            <p class="muted small">For servers with <code>online-mode=false</code>. You still need your Microsoft account that owns Minecraft. Online-mode servers, Realms and SwiftClient capes won't work while this is on.</p>
+          </div>
+          <div class="card">
             <h3>Launcher</h3>
             <label class="check"><input type="checkbox" id="closeOnLaunch"> Hide the launcher while playing</label>
             <label class="check"><input type="checkbox" id="autoJoin"> <span>Join <span class="server-name">SwiftSMP</span> when I press Play</span></label>

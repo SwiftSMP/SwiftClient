@@ -241,7 +241,7 @@ function buildCommand(profile, { session, gameDir, settings, launcherVersion, jo
     auth_access_token: session.accessToken,
     clientid: '',
     auth_xuid: session.xuid || '',
-    user_type: 'msa',
+    user_type: session.userType || 'msa',
     version_type: 'SwiftClient',
     natives_directory: profile.nativesDir,
     launcher_name: 'SwiftClient',

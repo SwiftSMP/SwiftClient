@@ -43,10 +43,23 @@ $$('.nav').forEach((n) => n.addEventListener('click', () => show(n.dataset.view)
 function renderAccount() {
   const a = state.account;
   $('#loginOverlay').classList.toggle('hidden', !!a);
-  $('#accountName').textContent = a ? a.name : 'Not signed in';
+  $('#accountName').textContent = a ? (a.offlineName ? `${a.offlineName} (offline)` : a.name) : 'Not signed in';
   $('#accountHead').src = a ? `https://mc-heads.net/avatar/${a.uuid}/64` : 'img/logo.png';
   $('#logoutBtn').classList.toggle('hidden', !a);
+  $('#offlineEnabled').checked = !!(a && a.offlineName);
+  $('#offlineName').value = (a && a.offlineName) || '';
 }
+
+$('#offlineSave').addEventListener('click', async () => {
+  const name = $('#offlineEnabled').checked ? $('#offlineName').value.trim() : null;
+  try {
+    state.account = await swift.call('auth:offlineName', name);
+    renderAccount();
+    toast(name ? `Playing offline as ${name}` : `Playing as ${state.account.name}`);
+  } catch (e) {
+    toast(e.message, true);
+  }
+});
 
 $('#loginBtn').addEventListener('click', async () => {
   $('#loginError').textContent = '';

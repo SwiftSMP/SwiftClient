@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const { BrowserWindow, safeStorage, session } = require('electron');
 const { fetchJson } = require('./download');
 const { paths } = require('./config');
+const { validOfflineName, offlineSession } = require('./offline');
 
 const AUTHORITY = 'https://login.microsoftonline.com/consumers/oauth2/v2.0';
 const REDIRECT_URI = 'https://login.microsoftonline.com/common/oauth2/nativeclient';
@@ -167,7 +168,7 @@ function readAccount() {
 }
 
 function publicAccount(a) {
-  return a ? { uuid: a.mc.uuid, name: a.mc.name } : null;
+  return a ? { uuid: a.mc.uuid, name: a.mc.name, offlineName: a.offlineName || null } : null;
 }
 
 // ---- API --------------------------------------------------------------------
@@ -204,9 +205,24 @@ class Auth {
       throw e;
     }
     const mc = await minecraftFromMsAccessToken(ms.access_token);
-    this.account = { refreshToken: ms.refresh_token || this.account.refreshToken, mc };
+    this.account = { ...this.account, refreshToken: ms.refresh_token || this.account.refreshToken, mc };
     saveAccount(this.account);
     return mc;
+  }
+
+  /** Name to use on offline-mode servers, or null to play as the Microsoft account. */
+  setOfflineName(name) {
+    if (!this.account) throw new Error('Sign in with the Microsoft account that owns Minecraft first.');
+    if (name && !validOfflineName(name)) throw new Error('Names are 3 to 16 letters, numbers or underscores.');
+    this.account = { ...this.account, offlineName: name || null };
+    saveAccount(this.account);
+    return publicAccount(this.account);
+  }
+
+  /** Session to launch the game with: the Microsoft one, or the offline name on top of it. */
+  async playSession() {
+    const mc = await this.session(); // still proves the account owns Minecraft
+    return this.account.offlineName ? offlineSession(this.account.offlineName) : mc;
   }
 
   async logout() {

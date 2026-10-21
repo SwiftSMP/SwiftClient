@@ -99,6 +99,7 @@ const handlers = {
   'auth:current': () => auth.current(),
   'auth:login': () => auth.login(win),
   'auth:logout': () => auth.logout(),
+  'auth:offlineName': (_e, name) => auth.setOfflineName(name),
 
   'settings:get': () => loadSettings(),
   'settings:set': (_e, s) => { const r = saveSettings(s); updatePresence(); return r; },
@@ -147,13 +148,14 @@ async function launch({ join = false } = {}) {
   const mc = settings.version && versions.includes(settings.version) ? settings.version : versions[0];
   const progress = (done, total, label) => send('launch:progress', { done, total, label });
 
-  const session = await auth.session();
+  const session = await auth.playSession();
   progress(0, 1, `Preparing Minecraft ${mc}`);
   const profile = await minecraft.install(mc, progress);
 
   const swiftMod = swiftModFor(mc);
   const result = await mods.syncMods(mc, settings, { swiftMod, onProgress: progress });
   if (result.unavailable.length) send('launch:notice', `Not available for ${mc} yet: ${result.unavailable.join(', ')}`);
+  if (session.offline) send('launch:notice', `Playing offline as ${session.name}: only servers with online-mode=false will let you in.`);
   if (!swiftMod) send('launch:notice', `SwiftClient capes and branding are not available for ${mc} yet.`);
 
   const gameDir = paths.instance(mc);
@@ -167,7 +169,7 @@ async function launch({ join = false } = {}) {
   const logFile = path.join(paths.logs, 'latest-launch.log');
   const log = fs.createWriteStream(logFile);
   log.write(`SwiftClient ${app.getVersion()} launching ${profile.id}\n`);
-  log.write(`${cmd.java} ${cmd.args.map((a) => (a.includes(session.accessToken) ? '<token>' : a)).join(' ')}\n\n`);
+  log.write(`${cmd.java} ${cmd.args.map((a) => (!session.offline && a.includes(session.accessToken) ? '<token>' : a)).join(' ')}\n\n`);
 
   progress(1, 1, 'Starting Minecraft');
   updatePresence({ phase: 'starting', server: null });
