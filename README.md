@@ -28,9 +28,10 @@ SwiftClient/
 | Versions | Every Minecraft release from 1.21 to the newest one that Fabric supports (picker on the Play screen). |
 | Performance | `launcher/src/main/mods.js` `CURATED`: Sodium, Lithium, FerriteCore, ImmediatelyFast, EntityCulling, More Culling, BadOptimizations, ModernFix, Krypton, Dynamic FPS, plus optional Sodium Extra, Reese's Sodium Options, Mod Menu, Zoomify, Iris. The newest Modrinth build for the chosen Minecraft version is picked (release before beta before alpha), required libraries are added automatically, and a mod with no build for that version is skipped with a notice. G1 JVM flags tuned for short pauses. |
 | Your mods | Mods tab: drop `.jar` files or use Import. Each jar is checked: Fabric (not Forge/NeoForge/Quilt), the Minecraft version range in `fabric.mod.json`, not already included, not OptiFine/Canvas-style conflicts, `breaks` declarations, missing dependencies (warning). Each version has its own isolated folder in `%APPDATA%\.swiftclient\instances\<version>`. |
-| Capes | Players pick a cape in the Cosmetics tab. The launcher proves who they are to the cape server with Mojang's `join`/`hasJoined` handshake (the same one Minecraft servers use), so the access token never leaves Mojang. The mod looks up each player it renders and swaps in their cape (and elytra, unless they have their own). |
+| Capes | Players pick a cape in the Cosmetics tab. The launcher proves who they are with Mojang's `join`/`hasJoined` handshake (the same one Minecraft servers use). That check is tied to the player's IP, so when Mojang will not confirm it the launcher retries with its Minecraft access token, which the cape server verifies with Mojang and never stores or logs. The mod looks up each player it renders and swaps in their cape (and elytra, unless they have their own). |
 | Discord | `launcher/src/main/discord.js` talks to Discord's local pipe. The mod prints join/leave events that the launcher turns into "Playing on swiftsmp.net", "Playing Singleplayer", "In the menus". On versions without the SwiftClient mod it falls back to reading Minecraft's "Connecting to…" log line. |
-| Updates | `electron-updater` checks GitHub Releases every 6 hours and installs on restart. |
+| Player counts | The Play screen shows who is on SwiftSMP (a normal Minecraft server ping, no third-party status site) and how many SwiftClient players are online and how many installs exist (anonymous counters on the cape server; switch off with *Show live SwiftClient player counts*). |
+| Updates | `electron-updater` checks GitHub Releases on start and every hour, downloads in the background and installs on restart. If a build cannot install updates itself, the launcher still finds the newest release on GitHub and offers a one-click download. |
 
 ## In game (the SwiftClient mod)
 
@@ -84,7 +85,9 @@ Requirements: Node 20+ (tested with 24), JDK 25 (for the mod), internet access.
 ```bash
 # 1. the Fabric mod (one build per Minecraft version; see "Mod for more versions")
 cd mod
-./gradlew dist            # -> mod/dist/swiftclient-1.0.0+26.3.jar and mod/dist/index.json
+./gradlew dist            # 26.3 -> mod/dist/swiftclient-1.1.0+26.3.jar and index.json
+./gradlew dist -Pminecraft_version=26.2 -Pfabric_api_version=0.161.0+26.2
+./gradlew dist -Pminecraft_version=26.1 -Pfabric_api_version=0.155.3+26.1.2
 
 # 2. the launcher
 cd ../launcher
@@ -113,9 +116,9 @@ these map to `-Dswiftclient.debug=...` and do nothing in normal play).
 
 ### Releasing an update
 
-1. Bump `version` in `launcher/package.json` (and `mod/gradle.properties` if the mod changed; rebuild with `./gradlew dist`).
-2. `set GH_TOKEN=<token with repo scope>` then `npm run release`. This builds the installer and uploads `SwiftClient-Setup.exe`, its `.blockmap` and `latest.yml` to a GitHub release (created as a draft: publish it on GitHub).
-3. Running launchers pick it up within 6 hours (or on next start) and update on restart.
+1. Bump `version` in `launcher/package.json` (and `mod/gradle.properties` if the mod changed; rebuild with `./gradlew dist` for each supported version, see below).
+2. `set GH_TOKEN=<token with repo scope>` then `npm run release`. This builds the installer and uploads `SwiftClient-Setup.exe`, its `.blockmap` and `latest.yml` to a GitHub release (created as a draft: publish it with `gh release edit v<version> --draft=false`, or on GitHub).
+3. Running launchers pick it up within the hour (or on next start) and install on restart. A draft or unpublished release is never offered, and neither is one whose `latest.yml` is missing: keep both files attached to every release so the old clients (which read `latest.yml`) can update.
 
 The installer is not code-signed, so Windows SmartScreen warns on first run ("More info →
 Run anyway"). To remove the warning, buy an OV/EV code-signing certificate and set
@@ -123,14 +126,16 @@ Run anyway"). To remove the warning, buy an OV/EV code-signing certificate and s
 
 ### Mod for more versions
 
-The SwiftClient mod is built for **26.3**. The launcher reads `mod/dist/index.json`
-(`{"<mc version>": "<jar>"}`) and installs the matching jar; versions without one still get
-all performance mods, Discord presence (via log parsing) and imported mods, but no SwiftClient
-capes or window title (the picker shows "no capes"). To add a version, change
-`minecraft_version`, `fabric_api_version` and `loader_version` in `mod/gradle.properties`
-and run `./gradlew dist` again: each run adds its jar to `index.json`. 26.1 and newer use
-Mojang's own names, so the code builds as is if the classes did not move. For 1.21.x the
-mixins must be ported to Yarn/intermediary mappings (`PlayerSkin`/`SkinTextures` differ).
+The launcher reads `mod/dist/index.json` (`{"<mc version>": "<jar>"}`) and installs the
+matching jar; versions without one still get all performance mods, Discord presence (via log
+parsing) and imported mods, but no SwiftClient capes or window title (the picker shows
+"no capes"). **26.1, 26.2 and 26.3** are built; add another version with
+`./gradlew dist -Pminecraft_version=<mc> -Pfabric_api_version=<fabric api build for that version>`
+(each run adds its jar to `index.json`). 26.x use Mojang's own names, so the code usually builds
+as is when classes did not move. For **1.21.x** the mod has to be ported: the mixins use Yarn /
+intermediary names there (`PlayerSkin`/`SkinTextures` instead of `ClientAsset`, `ResourceLocation`
+instead of `Identifier`), so it is a real port, not a rebuild. Those versions still launch with
+everything the launcher provides.
 
 ## Cape server
 
@@ -153,7 +158,14 @@ npx wrangler deploy                         # also after editing capes/
 `cape-server/server.js` is the same API as a plain Node server (`PORT=8765 HOST=127.0.0.1` by
 default, data in `data/`) if you would rather host it yourself behind a reverse proxy.
 
-API: `GET /capes`, `GET /capes/<id>.png`, `GET /players/<uuid>.json`, `GET /players/<uuid>/available`, `POST /auth/challenge`, `POST /select {name, serverId, cape}`.
+API: `GET /capes`, `GET /capes/<id>.png`, `GET /players/<uuid>.json`, `GET /players/<uuid>/available`, `GET /stats`, `POST /stats/heartbeat {id, version}`, `POST /auth/challenge`, `POST /select {name, serverId, cape, accessToken?}`.
+
+Cape selection either passes Mojang's `hasJoined` check or, when Mojang will not confirm the
+session (it binds a `join` to the player's IP, which a Worker cannot share), with the player's
+Minecraft access token that is verified against `api.minecraftservices.com` and immediately
+discarded. A challenge is only spent when verification succeeds, so the launcher can retry.
+Stats are anonymous: a random install id, the version and a heartbeat; `/stats` returns
+`{users, online}`. Each heartbeat is a KV write, so presence uses a 25-minute TTL.
 
 ## Accounts
 

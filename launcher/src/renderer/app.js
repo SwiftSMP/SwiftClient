@@ -191,7 +191,62 @@ swift.onUpdate((u) => {
     b.textContent = `SwiftClient ${u.version} is ready. Restart to update`;
     b.onclick = () => swift.installUpdate();
   }
+  // Builds that cannot install updates themselves still get a one-click download.
+  if (u.state === 'manual' && u.url) {
+    b.textContent = `SwiftClient ${u.version} is out — get the update`;
+    b.onclick = () => swift.call('shell:open', u.url);
+  }
 });
+
+// ---- live counts -------------------------------------------------------------------
+
+const num = (n) => Number(n).toLocaleString('en-US');
+
+function setServerStatus(server) {
+  const card = $('#serverCard');
+  const dot = $('#serverDot');
+  card.classList.remove('off', 'busy');
+  dot.classList.remove('on');
+  if (!server) return;
+  if (server.offline) {
+    $('#serverOnline').textContent = 'Offline';
+    $('#serverLabel').textContent = 'SwiftSMP is not answering right now';
+    card.classList.add('off');
+    return;
+  }
+  dot.classList.add('on');
+  $('#serverOnline').textContent = num(server.players.online);
+  $('#serverLabel').replaceChildren(
+    document.createTextNode(server.players.max ? `of ${num(server.players.max)} on ` : 'players on '),
+    el('span', { className: 'server-name', textContent: state.info.server.name }));
+  card.title = server.motd ? `${server.motd}\n${server.latencyMs} ms` : `${server.latencyMs} ms`;
+}
+
+function setClientStatus(client) {
+  const card = $('#clientCard');
+  card.classList.remove('off', 'busy');
+  if (!client) {
+    $('#clientCard').classList.add('busy');
+    return;
+  }
+  $('#clientDot').classList.add('on');
+  $('#clientOnline').textContent = num(client.online);
+  $('#clientLabel').textContent = client.users
+    ? `SwiftClient online · ${num(client.users)} installs`
+    : 'SwiftClient players online';
+}
+
+async function refreshStatus() {
+  try {
+    const s = await swift.call('stats:get');
+    setServerStatus(s.server);
+    setClientStatus(s.client);
+  } catch { /* offline: keep the last counts */ }
+}
+
+swift.onStats((s) => setClientStatus(s.client));
+setInterval(refreshStatus, 60000);
+$('#serverCard').addEventListener('click', () => refreshStatus());
 
 // ---- mods ------------------------------------------------------------------------
 
@@ -316,7 +371,7 @@ function bindSettings(curated, totalMemMb) {
     $(`#${id}`).value = s[id];
     $(`#${id}`).addEventListener('change', (e) => save({ [id]: Number(e.target.value) || s[id] }));
   }
-  for (const id of ['fullscreen', 'performanceMods', 'closeOnLaunch', 'autoJoin', 'discordPresence', 'discordShowServer']) {
+  for (const id of ['fullscreen', 'performanceMods', 'closeOnLaunch', 'autoJoin', 'discordPresence', 'discordShowServer', 'shareStats']) {
     $(`#${id}`).checked = !!s[id];
     $(`#${id}`).addEventListener('change', (e) => save({ [id]: e.target.checked }));
   }
@@ -357,4 +412,5 @@ function bindSettings(curated, totalMemMb) {
   $('#modsVersion').textContent = currentVersion();
   state.running = await swift.call('game:running');
   setBusy(false);
+  refreshStatus();
 })();

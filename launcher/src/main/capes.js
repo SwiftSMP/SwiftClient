@@ -3,6 +3,32 @@
 
 const { fetchJson } = require('./download');
 
+const SESSION_JOIN = 'https://sessionserver.mojang.com/session/minecraft/join';
+
+/** The cape server's own {error} text, when it sent one. */
+function serverError(e) {
+  try {
+    const body = JSON.parse(e.body || '');
+    return typeof body.error === 'string' ? body.error : '';
+  } catch {
+    return '';
+  }
+}
+
+function friendlyCapeError(e) {
+  let message;
+  const msg = serverError(e);
+  if (msg) message = msg;
+  else if (e.status === 429) message = 'The cape server is busy. Please try again in a minute.';
+  else if (e.status >= 500) message = 'The cape server hit an error. Please try again shortly.';
+  else if (!e.status) message = 'Could not reach the cape server. Check your internet connection and try again.';
+  if (!message) return e;
+  const out = new Error(message);
+  out.status = e.status;
+  out.body = e.body;
+  return out;
+}
+
 class Capes {
   constructor(baseUrl) {
     this.base = (baseUrl || '').replace(/\/+$/, '');
@@ -12,33 +38,69 @@ class Capes {
 
   async catalog(uuid) {
     if (!this.base) return { enabled: false, capes: [], selected: null };
-    const [capes, mine] = await Promise.all([
+    const [list, mine] = await Promise.allSettled([
       fetchJson(`${this.base}/capes`),
-      uuid ? fetchJson(`${this.base}/players/${uuid}/available`) : { capes: [], selected: null },
+      uuid ? fetchJson(`${this.base}/players/${uuid}/available`) : Promise.resolve({ capes: [], selected: null }),
     ]);
-    const owned = new Set(mine.capes);
+    if (list.status === 'rejected') throw friendlyCapeError(list.reason);
+    // The per-player call failing must not hide the whole catalog.
+    const ownedIds = mine.status === 'fulfilled' ? (mine.value.capes || []) : [];
+    const owned = new Set(ownedIds);
     return {
       enabled: true,
-      selected: mine.selected,
-      capes: capes.map((c) => ({ ...c, owned: c.public || owned.has(c.id), image: `${this.base}/capes/${c.id}.png` })),
+      selected: mine.status === 'fulfilled' ? mine.value.selected : null,
+      capes: list.value.map((c) => ({ ...c, owned: c.public || owned.has(c.id), image: `${this.base}/capes/${c.id}.png` })),
     };
   }
 
-  /** Select a cape (or null to remove), proving identity with Mojang's join/hasJoined handshake. */
+  /**
+   * Select a cape (or null to remove). Identity is proved with Mojang's join/hasJoined
+   * handshake; if Mojang will not confirm that session (it ties a join to the player's IP,
+   * which breaks when the launcher and the cape server see different addresses), retry with
+   * the Minecraft access token, which the cape server verifies with Mojang and never stores.
+   */
   async select(session, capeId) {
     if (!this.base) throw new Error('Shared capes are not configured.');
-    const { serverId } = await fetchJson(`${this.base}/auth/challenge`, { method: 'POST' });
-    await fetchJson('https://sessionserver.mojang.com/session/minecraft/join', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken: session.accessToken, selectedProfile: session.uuid, serverId }),
-    });
-    return fetchJson(`${this.base}/select`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: session.name, serverId, cape: capeId }),
-    });
+    let serverId;
+    try {
+      ({ serverId } = await fetchJson(`${this.base}/auth/challenge`, { method: 'POST' }));
+    } catch (e) {
+      throw friendlyCapeError(e);
+    }
+
+    try {
+      await fetchJson(SESSION_JOIN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: session.accessToken, selectedProfile: session.uuid, serverId }),
+      });
+    } catch (e) {
+      if (e.status === 401 || e.status === 403) {
+        throw new Error(`Mojang rejected the session for ${session.name}. Sign out and back in, then try again.`);
+      }
+      throw new Error(`Could not reach Mojang to confirm the session (${e.status ? `HTTP ${e.status}` : 'network error'}). Try again in a moment.`);
+    }
+
+    const body = { name: session.name, serverId, cape: capeId };
+    try {
+      return await this.postSelect(body);
+    } catch (e) {
+      if (e.status !== 403 || !/could not verify/i.test(serverError(e))) throw friendlyCapeError(e);
+      return this.postSelect({ ...body, accessToken: session.accessToken });
+    }
+  }
+
+  async postSelect(body) {
+    try {
+      return await fetchJson(`${this.base}/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      throw friendlyCapeError(e);
+    }
   }
 }
 
-module.exports = { Capes };
+module.exports = { Capes, friendlyCapeError };

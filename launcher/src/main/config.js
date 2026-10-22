@@ -66,6 +66,7 @@ const DEFAULT_SETTINGS = {
   extraJvmArgs: '',
   discordPresence: true,  // show SwiftClient activity on Discord
   discordShowServer: true, // include the server address
+  shareStats: true,       // anonymous install/online counters on the cape server
 };
 
 function defaultMemory() {

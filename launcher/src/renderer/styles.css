@@ -271,3 +271,42 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 999px; border: 2px solid var(--bg); }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* live status strip (Play screen) */
+.status-strip { display: flex; gap: 10px; margin-top: 18px; justify-content: center; flex-wrap: wrap; }
+.status-card {
+  display: flex; align-items: center; gap: 10px; padding: 8px 15px 8px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: rgba(19, 24, 48, 0.72); min-width: 170px;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+.status-card:hover { border-color: var(--border-soft); background: var(--surface); }
+.status-card .status-text { display: flex; flex-direction: column; line-height: 1.2; text-align: left; }
+.status-card b { font-family: var(--display); font-size: 17px; letter-spacing: 0.3px; }
+.status-card small { color: var(--muted); font-size: 11px; }
+.status-card.off { opacity: 0.65; }
+.status-card.off b { color: var(--muted); }
+.pulse { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--faint); transition: background 0.2s ease; }
+.pulse.on { background: var(--ok); animation: pulse-ok 2.4s ease-out infinite; }
+.pulse.alt.on { background: var(--accent); animation: pulse-accent 2.4s ease-out infinite; }
+.status-card.busy .pulse { animation: pulse-ok 1.6s ease-out infinite; opacity: 0.6; }
+@keyframes pulse-ok {
+  0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.45); }
+  70% { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+}
+@keyframes pulse-accent {
+  0% { box-shadow: 0 0 0 0 rgba(252, 109, 0, 0.45); }
+  70% { box-shadow: 0 0 0 7px rgba(252, 109, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(252, 109, 0, 0); }
+}
+
+/* gentle view transition so switching tabs does not snap */
+.view { animation: view-in 0.18s ease-out; }
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .view, .pulse.on, .pulse.alt.on, .status-card.busy .pulse { animation: none; }
+  .status-card { transition: none; }
+}

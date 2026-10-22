@@ -9,13 +9,40 @@ const { Auth } = require('./auth');
 const { Capes } = require('./capes');
 const minecraft = require('./minecraft');
 const mods = require('./mods');
+const updates = require('./updates');
+const { Stats } = require('./stats');
+const { pingServer } = require('./serverping');
 const { DiscordPresence, activityFor, parseGameOutput } = require('./discord');
 
 const appConfig = loadAppConfig();
 const auth = new Auth(appConfig.msClientId);
 const capes = new Capes(appConfig.capeApi);
+const stats = new Stats(appConfig.capeApi);
 let win;
 let game = null; // running game process
+
+// ---- live status ---------------------------------------------------------------
+
+// The featured server's player count, from a normal Minecraft server ping.
+let serverStatus = { at: 0, value: null };
+async function serverStatusNow(maxAgeMs = 30000) {
+  if (serverStatus.value && Date.now() - serverStatus.at < maxAgeMs) return serverStatus.value;
+  try {
+    const value = await pingServer(appConfig.server.address, { timeoutMs: 4000 });
+    serverStatus = { at: Date.now(), value };
+  } catch (e) {
+    serverStatus = { at: Date.now(), value: { offline: true, error: e.message } };
+  }
+  return serverStatus.value;
+}
+
+function restartStats() {
+  const settings = loadSettings();
+  stats.start(app.getVersion(), {
+    enabled: settings.shareStats !== false,
+    onUpdate: (counts) => send('stats:state', { client: counts }),
+  });
+}
 
 // ---- Discord Rich Presence -------------------------------------------------------
 
@@ -101,8 +128,14 @@ const handlers = {
   'auth:logout': () => auth.logout(),
 
   'settings:get': () => loadSettings(),
-  'settings:set': (_e, s) => { const r = saveSettings(s); updatePresence(); return r; },
-  'settings:system': () => ({ totalMemMb: Math.floor(require('os').totalmem() / 1048576) }),
+  'settings:set': (_e, s) => { const r = saveSettings(s); updatePresence(); restartStats(); return r; },
+  'settings:system': () => ({
+    totalMemMb: Math.floor(require('os').totalmem() / 1048576),
+    cpus: require('os').cpus().length,
+    platform: `${require('os').platform()} ${require('os').arch()}`,
+  }),
+
+  'stats:get': async () => ({ client: stats.last, server: await serverStatusNow() }),
 
   'versions:list': async () => {
     const list = await minecraft.listVersions(appConfig.minVersion);
@@ -200,23 +233,45 @@ async function launch({ join = false } = {}) {
 }
 
 // ---- auto-update -----------------------------------------------------------------
+// electron-updater silently installs a newer release on restart. The GitHub lookup below
+// covers the cases it cannot (builds without updater metadata, or a failed download): those
+// clients still get told a new version exists and can download the installer in one click.
+
+let updaterBusy = false;
+
+async function announceManualUpdate() {
+  try {
+    const release = await updates.latestRelease();
+    if (!updates.isNewer(release.version, app.getVersion())) return;
+    if (updaterBusy) return;
+    const url = await updates.installerUrl(release);
+    send('update:state', { state: 'manual', version: release.version, url });
+  } catch { /* offline or rate limited: try again next time */ }
+}
 
 function setupUpdater() {
   if (!app.isPackaged) return;
-  let autoUpdater;
-  try { ({ autoUpdater } = require('electron-updater')); } catch { return; }
-  autoUpdater.autoDownload = true;
-  autoUpdater.on('update-available', (i) => send('update:state', { state: 'downloading', version: i.version }));
-  autoUpdater.on('update-downloaded', (i) => send('update:state', { state: 'ready', version: i.version }));
-  autoUpdater.on('error', () => { /* offline or no releases yet: stay quiet */ });
-  ipcMain.handle('update:install', () => autoUpdater.quitAndInstall());
-  autoUpdater.checkForUpdates().catch(() => {});
-  setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 3600 * 1000).unref();
+  let autoUpdater = null;
+  try { ({ autoUpdater } = require('electron-updater')); } catch { /* fall through to the manual path */ }
+  ipcMain.handle('update:install', () => { if (autoUpdater) autoUpdater.quitAndInstall(); });
+  if (autoUpdater) {
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.on('update-available', (i) => { updaterBusy = true; send('update:state', { state: 'downloading', version: i.version }); });
+    autoUpdater.on('update-downloaded', (i) => { updaterBusy = true; send('update:state', { state: 'ready', version: i.version }); });
+    autoUpdater.on('error', () => { updaterBusy = false; /* offline or no releases yet: stay quiet */ });
+    autoUpdater.checkForUpdates().catch(() => {});
+    // Frequent enough that a fresh release reaches players within the hour.
+    setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 60 * 60 * 1000).unref();
+  }
+  setTimeout(announceManualUpdate, 12000);
+  setInterval(announceManualUpdate, 3 * 3600 * 1000).unref();
 }
 
 app.whenReady().then(() => {
   createWindow();
   setupUpdater();
+  restartStats();
   updatePresence();
 });
-app.on('window-all-closed', () => { discord.stop(); app.quit(); });
+app.on('window-all-closed', () => { discord.stop(); stats.stop(); app.quit(); });

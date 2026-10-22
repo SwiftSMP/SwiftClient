@@ -9,12 +9,12 @@ import net.minecraft.client.gui.screens.CreditsAndAttributionScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.LanguageSelectScreen;
-import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Items;
+import net.swiftsmp.swiftclient.Compat;
 import net.swiftsmp.swiftclient.SwiftClientMod;
 
 /** SwiftClient's title screen: the vanilla panorama under SwiftSMP glass, with one-click Join SwiftSMP. */
@@ -36,12 +36,19 @@ public final class SwiftTitleScreen extends SwiftScreen {
 		return false;
 	}
 
+	/** Opens vanilla Options; Compat picks the constructor this Minecraft version has. */
+	private void openOptions() {
+		Minecraft mc = Minecraft.getInstance();
+		Screen options = Compat.optionsScreen(this, mc.options);
+		if (options != null) mc.gui.setScreen(options);
+	}
+
 	@Override
 	public void tick() {
 		ticks++;
 		// Dev/test hook: -Dswiftclient.debug=options opens vanilla Options to check the button theme.
 		String debug = System.getProperty("swiftclient.debug", "");
-		if (ticks == 60 && debug.contains("options")) Minecraft.getInstance().gui.setScreen(new OptionsScreen(this, Minecraft.getInstance().options));
+		if (ticks == 60 && debug.contains("options")) openOptions();
 		if (ticks == 60 && debug.contains("titlemenu")) Minecraft.getInstance().gui.setScreen(new SwiftMenuScreen());
 	}
 
@@ -116,7 +123,7 @@ public final class SwiftTitleScreen extends SwiftScreen {
 		glassButton(g, "mp", bx, y, bw, 22, Items.ENDER_EYE, "Multiplayer", () -> mc.gui.setScreen(new JoinMultiplayerScreen(this)));
 		y += 27;
 		int half = (bw - 5) / 2;
-		glassButton(g, "opt", bx, y, half, 22, Items.COMPARATOR, "Options", () -> mc.gui.setScreen(new OptionsScreen(this, mc.options)));
+		glassButton(g, "opt", bx, y, half, 22, Items.COMPARATOR, "Options", this::openOptions);
 		glassButton(g, "quit", bx + half + 5, y, bw - half - 5, 22, Items.BARRIER, "Quit", mc::stop);
 
 		// small glass pills, top right

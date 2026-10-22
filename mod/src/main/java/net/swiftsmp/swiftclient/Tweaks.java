@@ -1,6 +1,5 @@
 package net.swiftsmp.swiftclient;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
@@ -23,7 +22,7 @@ public final class Tweaks {
 			o.keySprint.setDown(true);
 			sprintHeldByUs = true;
 		} else if (sprintHeldByUs) {
-			o.keySprint.setDown(InputConstants.isKeyDown(KeyMappingHelper.getBoundKeyOf(o.keySprint).getValue()));
+			o.keySprint.setDown(Compat.isKeyDown(KeyMappingHelper.getBoundKeyOf(o.keySprint).getValue()));
 			sprintHeldByUs = false;
 		}
 

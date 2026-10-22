@@ -1,7 +1,7 @@
 {
   "name": "swiftclient",
   "productName": "SwiftClient",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "SwiftClient — the SwiftSMP Minecraft launcher",
   "author": "SwiftSMP",
   "license": "UNLICENSED",
@@ -81,8 +81,9 @@
         "provider": "github",
         "owner": "SwiftSMP",
         "repo": "SwiftClient",
-        "releaseType": "release"
+        "releaseType": "draft"
       }
-    ]
+    ],
+    "electronUpdaterCompatibility": ">=2.16"
   }
 }

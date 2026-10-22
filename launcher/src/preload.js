@@ -22,5 +22,6 @@ contextBridge.exposeInMainWorld('swift', {
   onGameState: on('game:state'),
   onGameLog: on('game:log'),
   onUpdate: on('update:state'),
+  onStats: on('stats:state'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
 });

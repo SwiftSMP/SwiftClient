@@ -5,14 +5,19 @@
 //   GET  /capes/<id>.png             cape texture (64x32)
 //   GET  /players/<uuid>.json        {cape, url} for a player, 404 if none
 //   GET  /players/<uuid>/available   capes this player may pick
+//   GET  /stats                      {users, online} SwiftClient installs / online launchers
+//   POST /stats/heartbeat {id,version}  records a running launcher
 //   POST /auth/challenge             {serverId} one-time challenge
-//   POST /select {name, serverId, cape}
+//   POST /select {name, serverId, cape, accessToken?}
 //        Player proves ownership the same way a Minecraft server does: the launcher
 //        calls Mojang's session "join" with serverId, we verify with "hasJoined".
-//        The player's access token never reaches this server.
+//        When that check fails (Mojang ties the session to the player's IP) the launcher
+//        retries with its Minecraft access token, which is verified with Mojang and never
+//        stored or logged.
 //
 // Data: capes/catalog.json + capes/*.png (shipped), data/grants.json
-// ({"<uuid>": ["staff", ...]}) for non-public capes, data/selections.json (written).
+// ({"<uuid>": ["staff", ...]}) for non-public capes, data/selections.json (written),
+// data/installs.json (anonymous install ids, written).
 
 const http = require('http');
 const fs = require('fs');
@@ -24,10 +29,14 @@ const HOST = process.env.HOST || '127.0.0.1';
 const CAPES_DIR = process.env.CAPES_DIR || path.join(__dirname, 'capes');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const SESSION_SERVER = process.env.SESSION_SERVER || 'https://sessionserver.mojang.com';
+const PROFILE_URL = process.env.PROFILE_URL || 'https://api.minecraftservices.com/minecraft/profile';
+const USER_AGENT = 'SwiftClient-Capes/1.1 (+https://swiftsmp.com)';
+const PRESENCE_TTL_MS = 25 * 60_000;
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const selectionsFile = path.join(DATA_DIR, 'selections.json');
 const grantsFile = path.join(DATA_DIR, 'grants.json');
+const installsFile = path.join(DATA_DIR, 'installs.json');
 
 const readJson = (file, fallback) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; } };
 const catalog = () => readJson(path.join(CAPES_DIR, 'catalog.json'), []);
@@ -41,10 +50,77 @@ function saveSelections() {
 
 const normUuid = (u) => String(u || '').toLowerCase().replace(/-/g, '');
 const isUuid = (u) => /^[0-9a-f]{32}$/.test(u);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function available(uuid) {
   const granted = new Set((readJson(grantsFile, {})[uuid] || []));
   return catalog().filter((c) => c.public || granted.has(c.id));
+}
+
+// Anonymous installs (written once per launcher) and presence (refreshed by heartbeats).
+let installs = readJson(installsFile, {});
+const presence = new Map();
+
+// ---- identity ---------------------------------------------------------------
+
+/** Mojang's own check: the launcher called session/minecraft/join with this serverId. */
+async function handshakeProfile(name, serverId) {
+  const query = new URLSearchParams({ username: name, serverId });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const r = await fetch(`${SESSION_SERVER}/session/minecraft/hasJoined?${query}`, {
+        headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+      });
+      if (r.status === 200) {
+        const profile = await r.json();
+        if (isUuid(normUuid(profile.id))) return profile;
+      }
+    } catch { /* network hiccup: try once more */ }
+    if (attempt === 0) await sleep(250);
+  }
+  return null;
+}
+
+/** Fallback proof: Mojang confirms the token belongs to a real Minecraft account. */
+async function tokenProfile(accessToken) {
+  if (typeof accessToken !== 'string' || !/^[A-Za-z0-9._~+/=-]{20,4096}$/.test(accessToken)) return null;
+  try {
+    const r = await fetch(PROFILE_URL, {
+      headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': USER_AGENT, Accept: 'application/json' },
+    });
+    if (r.status !== 200) return null;
+    const profile = await r.json();
+    return isUuid(normUuid(profile.id)) ? profile : null;
+  } catch { return null; }
+}
+
+async function verifyPlayer({ name, serverId, accessToken }) {
+  const profile = (await handshakeProfile(name, serverId)) || (await tokenProfile(accessToken));
+  if (!profile) return null;
+  return { uuid: normUuid(profile.id), name: String(profile.name || name) };
+}
+
+function stats() {
+  const now = Date.now();
+  let online = 0;
+  for (const [id, seen] of presence) {
+    if (now - seen > PRESENCE_TTL_MS) presence.delete(id);
+    else online++;
+  }
+  return { users: Object.keys(installs).length, online };
+}
+
+function heartbeat(body) {
+  const id = normUuid(body.id);
+  if (!isUuid(id)) return null;
+  if (!installs[id]) {
+    installs[id] = { first: new Date().toISOString(), version: String(body.version || '').slice(0, 32) };
+    const tmp = `${installsFile}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(installs, null, 2));
+    fs.renameSync(tmp, installsFile);
+  }
+  presence.set(id, Date.now());
+  return stats();
 }
 
 // One-time challenges, valid for 2 minutes.
@@ -88,6 +164,7 @@ async function handle(req, res) {
   if (req.method === 'GET') {
     if (p === '/' || p === '/health') return send(res, 200, { ok: true, capes: catalog().length });
     if (p === '/capes') return send(res, 200, catalog().map(({ id, name, description, public: pub }) => ({ id, name, description, public: !!pub })));
+    if (p === '/stats') return send(res, 200, stats(), { 'Cache-Control': 'public, max-age=60' });
     let m = p.match(/^\/capes\/([a-z0-9_-]+)\.png$/);
     if (m) {
       const cape = catalog().find((c) => c.id === m[1]);
@@ -116,26 +193,32 @@ async function handle(req, res) {
       challenges.set(serverId, Date.now() + 120000);
       return send(res, 200, { serverId });
     }
+    if (p === '/stats/heartbeat') {
+      let body;
+      try { body = await readBody(req); } catch (e) { return send(res, 400, { error: e.message }); }
+      const result = heartbeat(body);
+      return result ? send(res, 200, result) : send(res, 400, { error: 'bad install id' });
+    }
     if (p === '/select') {
       let body;
       try { body = await readBody(req); } catch (e) { return send(res, 400, { error: e.message }); }
-      const { name, serverId, cape } = body;
+      const { name, serverId, cape, accessToken } = body;
       if (!challenges.has(serverId)) return send(res, 400, { error: 'unknown or expired challenge' });
-      challenges.delete(serverId);
       if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return send(res, 400, { error: 'bad name' });
-      const r = await fetch(`${SESSION_SERVER}/session/minecraft/hasJoined?` + new URLSearchParams({ username: name, serverId }));
-      if (r.status !== 200) return send(res, 403, { error: 'Mojang could not verify this session' });
-      const profile = await r.json();
-      const uuid = normUuid(profile.id);
-      if (!isUuid(uuid)) return send(res, 403, { error: 'bad profile' });
+
+      const player = await verifyPlayer({ name, serverId, accessToken });
+      // Keep the challenge until it is actually used: the launcher retries it with its token.
+      if (!player) return send(res, 403, { error: 'Mojang could not verify this session', verify: 'failed' });
+      challenges.delete(serverId);
+
       if (cape === null || cape === '') {
-        delete selections[uuid];
+        delete selections[player.uuid];
       } else {
-        if (!available(uuid).some((c) => c.id === cape)) return send(res, 403, { error: 'you do not have this cape' });
-        selections[uuid] = { cape, name: profile.name, at: new Date().toISOString() };
+        if (!available(player.uuid).some((c) => c.id === cape)) return send(res, 403, { error: 'you do not have this cape' });
+        selections[player.uuid] = { cape, name: player.name, at: new Date().toISOString() };
       }
       saveSelections();
-      return send(res, 200, { ok: true, uuid, cape: selections[uuid]?.cape || null });
+      return send(res, 200, { ok: true, uuid: player.uuid, cape: selections[player.uuid]?.cape || null });
     }
     return send(res, 404, { error: 'not found' });
   }
