@@ -86,7 +86,14 @@ class Capes {
       return await this.postSelect(body);
     } catch (e) {
       if (e.status !== 403 || !/could not verify/i.test(serverError(e))) throw friendlyCapeError(e);
-      return this.postSelect({ ...body, accessToken: session.accessToken });
+      try {
+        return await this.postSelect({ ...body, accessToken: session.accessToken });
+      } catch (retryError) {
+        if (retryError.status === 403 && /could not verify/i.test(serverError(retryError))) {
+          throw new Error('Mojang would not confirm your Minecraft session. Sign out and back in from the account menu, then try again.');
+        }
+        throw retryError;
+      }
     }
   }
 

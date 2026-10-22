@@ -120,13 +120,22 @@ async function stats(env) {
 async function heartbeat(env, { id, version }) {
   const install = normUuid(id);
   if (!isUuid(install)) return null;
-  const known = await env.CAPES.get(`inst:${install}`);
-  if (!known) {
+  const [knownInstall, knownPresence] = await Promise.all([
+    env.CAPES.get(`inst:${install}`),
+    env.CAPES.get(`on:${install}`),
+  ]);
+  // Count before writing: KV listings lag behind a fresh put, so a client would otherwise
+  // be told it is the only offline user.
+  const before = await stats(env);
+  if (!knownInstall) {
     await env.CAPES.put(`inst:${install}`, JSON.stringify({ first: new Date().toISOString(), version: String(version || '').slice(0, 32) }));
     userCount = { at: 0, value: userCount.value + 1 };
   }
-  await env.CAPES.put(`on:${install}`, '1', { expirationTtl: PRESENCE_TTL });
-  return stats(env);
+  if (!knownPresence) await env.CAPES.put(`on:${install}`, '1', { expirationTtl: PRESENCE_TTL });
+  return {
+    users: before.users + (knownInstall ? 0 : 1),
+    online: before.online + (knownPresence ? 0 : 1),
+  };
 }
 
 // ---- routing ----------------------------------------------------------------
