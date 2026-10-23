@@ -57,41 +57,52 @@ async function readBody(request) {
 /** Mojang's own check: the launcher called session/minecraft/join with this serverId. */
 async function handshakeProfile(sessionServer, name, serverId) {
   const query = new URLSearchParams({ username: name, serverId });
+  let lastStatus = 0;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const r = await fetch(`${sessionServer}/session/minecraft/hasJoined?${query}`, {
         headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
       });
+      lastStatus = r.status;
       if (r.status === 200) {
         const profile = await r.json();
-        if (isUuid(normUuid(profile.id))) return profile;
+        if (isUuid(normUuid(profile.id))) return { profile };
       }
-    } catch { /* network hiccup: try once more */ }
+    } catch (e) {
+      lastStatus = -1;
+    }
     if (attempt === 0) await sleep(250);
   }
-  return null;
+  return { profile: null, status: lastStatus };
 }
 
 /** Fallback proof: Mojang confirms the token belongs to a real Minecraft account. */
 async function tokenProfile(accessToken) {
-  if (typeof accessToken !== 'string' || !/^[A-Za-z0-9._~+/=-]{20,4096}$/.test(accessToken)) return null;
+  if (typeof accessToken !== 'string' || !/^[A-Za-z0-9._~+/=-]{20,4096}$/.test(accessToken)) {
+    return { profile: null, status: 0, note: accessToken ? 'bad-format' : 'missing' };
+  }
   try {
     const r = await fetch(PROFILE_URL, {
       headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': USER_AGENT, Accept: 'application/json' },
     });
-    if (r.status !== 200) return null;
+    if (r.status !== 200) return { profile: null, status: r.status };
     const profile = await r.json();
-    return isUuid(normUuid(profile.id)) ? profile : null;
+    return isUuid(normUuid(profile.id)) ? { profile } : { profile: null, status: -2 };
   } catch {
-    return null;
+    return { profile: null, status: -1 };
   }
 }
 
 async function verifyPlayer(env, { name, serverId, accessToken }) {
   const sessionServer = env.SESSION_SERVER || SESSION_SERVER_DEFAULT;
-  const profile = (await handshakeProfile(sessionServer, name, serverId)) || (await tokenProfile(accessToken));
-  if (!profile) return null;
-  return { uuid: normUuid(profile.id), name: String(profile.name || name) };
+  const handshake = await handshakeProfile(sessionServer, name, serverId);
+  if (handshake.profile) return { uuid: normUuid(handshake.profile.id), name: String(handshake.profile.name || name) };
+  const token = await tokenProfile(accessToken);
+  if (token.profile) return { uuid: normUuid(token.profile.id), name: String(token.profile.name || name) };
+  // Surface why, so a failed selection can be diagnosed without Worker logs.
+  return {
+    failed: `hasJoined=${handshake.status}${token.note ? `(${token.note})` : ` token=${token.status}`}`,
+  };
 }
 
 // ---- stats ------------------------------------------------------------------
@@ -194,9 +205,10 @@ export async function handle(request, env) {
       }
       if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return send(400, { error: 'bad name' });
 
-      const player = await verifyPlayer(env, { name, serverId, accessToken });
+      const verified = await verifyPlayer(env, { name, serverId, accessToken });
       // Keep the challenge until it is actually used: the launcher retries it with its token.
-      if (!player) return send(403, { error: 'Mojang could not verify this session', verify: 'failed' });
+      if (verified.failed) return send(403, { error: 'Mojang could not verify this session', verify: 'failed', reason: verified.failed });
+      const player = verified;
       await env.CAPES.delete(`ch:${serverId}`);
 
       if (cape === null || cape === '') {
