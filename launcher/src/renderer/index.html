@@ -110,6 +110,17 @@
           <button class="btn ghost" id="capeRedeem">Redeem</button>
         </div>
         <div class="cape-grid" id="capeGrid"></div>
+        <div class="admin-codes" id="adminCodes" hidden>
+          <h3>Redeem codes</h3>
+          <div class="row">
+            <select id="adminCape"></select>
+            <input type="number" id="adminUses" min="0" max="10000" value="1" title="Uses per code (0 = unlimited)">
+            <input type="number" id="adminCount" min="1" max="100" value="1" title="How many codes">
+            <button class="btn ghost" id="adminCreate">Create codes</button>
+          </div>
+          <textarea id="adminOut" readonly spellcheck="false" placeholder="New codes appear here once. Copy them before you leave." hidden></textarea>
+          <div class="admin-list" id="adminList"></div>
+        </div>
       </section>
 
       <!-- SETTINGS -->

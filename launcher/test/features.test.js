@@ -132,6 +132,63 @@ test('cape Worker redeems a code once per player and only for a verified session
   }
 });
 
+test('cape Worker lets only the admin create and list redeem codes', async () => {
+  const { handle } = await import('../../cape-server/worker/src/index.js');
+  const crypto = require('crypto');
+  const store = kvStore({ codes: JSON.stringify({}) });
+  const env = workerEnv(store);
+  const ADMIN = { id: '5b79930d65184ca08b836bb77386cecf', name: 'katleal' };
+  const ADMIN_TOKEN = `admin-${'z'.repeat(40)}`;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts = {}) => {
+    if (String(url).includes('hasJoined')) return new Response(null, { status: 204 });
+    if (String(url).includes('api.minecraftservices.com')) {
+      const auth = opts.headers && opts.headers.Authorization;
+      if (auth === `Bearer ${ADMIN_TOKEN}`) return new Response(JSON.stringify(ADMIN));
+      if (auth === `Bearer ${TOKEN}`) return new Response(JSON.stringify(NOTCH));
+      return new Response(null, { status: 401 });
+    }
+    return new Response(null, { status: 204 });
+  };
+  try {
+    const req = (p, body) => handle(new Request(`https://capes.test${p}`, body ? { method: 'POST', body: JSON.stringify(body) } : {}), env);
+    const json = async (p, body) => { const r = await req(p, body); return { status: r.status, body: await r.json() }; };
+    const challenge = async () => (await json('/auth/challenge', {})).body.serverId;
+    const admin = (extra) => ({ name: 'katleal', serverId: undefined, accessToken: ADMIN_TOKEN, ...extra });
+
+    // Not an admin: refused, even with a valid session.
+    const denied = await json('/admin/codes', { name: 'Notch', serverId: await challenge(), accessToken: TOKEN, action: 'list' });
+    assert.strictEqual(denied.status, 403);
+
+    // Admin creates two single-use codes for the staff cape.
+    const created = await json('/admin/codes', { ...admin({ serverId: await challenge() }), action: 'create', cape: 'staff', uses: 1, count: 2 });
+    assert.strictEqual(created.status, 200);
+    assert.strictEqual(created.body.codes.length, 2);
+    for (const c of created.body.codes) assert.ok(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(c));
+
+    // Only hashes are stored.
+    const stored = JSON.stringify([...store.map.values()]);
+    for (const c of created.body.codes) assert.ok(!stored.includes(c));
+
+    // A created code redeems through the normal player path.
+    const redeemed = await json('/redeem', { name: 'Notch', serverId: await challenge(), code: created.body.codes[0], accessToken: TOKEN });
+    assert.strictEqual(redeemed.status, 200);
+    assert.strictEqual(redeemed.body.cape, 'staff');
+
+    // Listing shows counts, never the codes.
+    const listed = await json('/admin/codes', { ...admin({ serverId: await challenge() }), action: 'list' });
+    assert.strictEqual(listed.status, 200);
+    assert.strictEqual(listed.body.codes.length, 2);
+    assert.ok(!JSON.stringify(listed.body).includes(created.body.codes[1]));
+
+    // Public capes cannot be issued as codes.
+    const badCape = await json('/admin/codes', { ...admin({ serverId: await challenge() }), action: 'create', cape: 'swift', count: 1 });
+    assert.strictEqual(badCape.status, 400);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test('cape Worker counts installs and online launchers', async () => {
   const { handle } = await import('../../cape-server/worker/src/index.js');
   const env = workerEnv(kvStore());

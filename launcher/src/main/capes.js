@@ -146,6 +146,51 @@ class Capes {
     }
   }
 
+  /**
+   * Admin only: list or create redeem codes. Same join/token handshake as redeem; the server
+   * refuses anyone who is not on its admin list.
+   */
+  async adminCodes(session, request) {
+    if (!this.base) throw new Error('Shared capes are not configured.');
+    let serverId;
+    try {
+      ({ serverId } = await fetchJson(`${this.base}/auth/challenge`, { method: 'POST' }));
+    } catch (e) {
+      throw friendlyCapeError(e);
+    }
+    try {
+      await fetchJson(SESSION_JOIN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: session.accessToken, selectedProfile: session.uuid, serverId }),
+      });
+    } catch (e) {
+      if (e.status === 401 || e.status === 403) {
+        throw new Error(`Mojang rejected the session for ${session.name}. Sign out and back in, then try again.`);
+      }
+      throw new Error(`Could not reach Mojang to confirm the session (${e.status ? `HTTP ${e.status}` : 'network error'}). Try again in a moment.`);
+    }
+    const body = { name: session.name, serverId, ...request };
+    try {
+      return await fetchJson(`${this.base}/admin/codes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      if (e.status !== 403 || !/could not verify/i.test(serverError(e))) throw friendlyCapeError(e);
+      try {
+        return await fetchJson(`${this.base}/admin/codes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, accessToken: session.accessToken }),
+        });
+      } catch (retryError) {
+        throw friendlyCapeError(retryError);
+      }
+    }
+  }
+
   async postSelect(body) {
     try {
       return await fetchJson(`${this.base}/select`, {

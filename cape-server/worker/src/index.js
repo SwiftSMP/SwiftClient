@@ -27,6 +27,14 @@ const PRESENCE_TTL = 25 * 60;
 const normUuid = (u) => String(u || '').toLowerCase().replace(/-/g, '');
 const isUuid = (u) => /^[0-9a-f]{32}$/.test(u);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Players allowed to create and list redeem codes (katleal).
+const ADMIN_UUIDS = ['5b79930d65184ca08b836bb77386cecf'];
+// No 0/O or 1/I, so codes are easy to read aloud. 32 symbols divide 256 evenly, so no bias.
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newCode = () => {
+  const c = [...crypto.getRandomValues(new Uint8Array(12))].map((b) => CODE_ALPHABET[b % 32]).join('');
+  return `${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8, 12)}`;
+};
 const sha256Hex = async (text) => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -228,6 +236,46 @@ export async function handle(request, env) {
       await env.CAPES.put('grants', JSON.stringify(grants));
       await env.CAPES.put('codes', JSON.stringify(codes));
       return send(200, { ok: true, uuid: verified.uuid, cape: entry.cape });
+    }
+    if (p === '/admin/codes') {
+      let body;
+      try { body = await readBody(request); } catch (e) { return send(400, { error: e.message }); }
+      const { name, serverId, accessToken, action, cape, uses, count } = body;
+      if (!/^[0-9a-f]{32}$/.test(serverId || '') || !(await env.CAPES.get(`ch:${serverId}`))) {
+        return send(400, { error: 'unknown or expired challenge' });
+      }
+      if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return send(400, { error: 'bad name' });
+      const verified = await verifyPlayer(env, { name, serverId, accessToken });
+      if (verified.failed) return send(403, { error: 'Mojang could not verify this session', verify: 'failed', reason: verified.failed });
+      await env.CAPES.delete(`ch:${serverId}`);
+      if (!ADMIN_UUIDS.includes(verified.uuid)) return send(403, { error: 'not an admin' });
+
+      const codes = (await env.CAPES.get('codes', 'json')) || {};
+      if (action === 'list') {
+        return send(200, {
+          codes: Object.values(codes).map((e) => ({ cape: e.cape, uses: e.uses, redeemed: (e.redeemed || []).length, created: e.created || null })),
+        });
+      }
+      if (action !== 'create') return send(400, { error: 'bad action' });
+      if (!catalog.some((c) => c.id === cape && !c.public)) return send(400, { error: 'bad cape: must be a non-public cape' });
+      const n = count === undefined ? 1 : Number(count);
+      if (!Number.isInteger(n) || n < 1 || n > 100) return send(400, { error: 'count must be 1 to 100' });
+      const u = uses === undefined ? 1 : Number(uses);
+      if (!Number.isInteger(u) || u < 0 || u > 10000) return send(400, { error: 'uses must be 0 (unlimited) to 10000' });
+
+      const made = [];
+      for (let i = 0; i < n; i++) {
+        let code;
+        let hash;
+        do {
+          code = newCode();
+          hash = await sha256Hex(code);
+        } while (codes[hash]);
+        codes[hash] = { cape, uses: u, redeemed: [], created: new Date().toISOString() };
+        made.push(code);
+      }
+      await env.CAPES.put('codes', JSON.stringify(codes));
+      return send(200, { ok: true, cape, uses: u, codes: made });
     }
     if (p === '/select') {
       let body;

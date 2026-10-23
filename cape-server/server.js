@@ -47,6 +47,20 @@ const writeJson = (file, value) => {
 // Redeem codes: only SHA-256 hashes are stored, so the file leaks nothing usable.
 const codesFile = path.join(DATA_DIR, 'codes.json');
 const codes = () => readJson(codesFile, {});
+// Players allowed to create and list redeem codes (katleal).
+const ADMIN_UUIDS = ['5b79930d65184ca08b836bb77386cecf'];
+// No 0/O or 1/I, so codes are easy to read aloud. 32 symbols divide 256 evenly, so no bias.
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newCode = () => {
+  const c = [...crypto.randomBytes(12)].map((b) => CODE_ALPHABET[b % 32]).join('');
+  return `${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8, 12)}`;
+};
+
+function writeCodes(value) {
+  const tmp = `${codesFile}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
+  fs.renameSync(tmp, codesFile);
+}
 const catalog = () => readJson(path.join(CAPES_DIR, 'catalog.json'), []);
 let selections = readJson(selectionsFile, {});
 
@@ -231,6 +245,45 @@ async function handle(req, res) {
       entry.redeemed = [...(entry.redeemed || []), player.uuid];
       writeJson(codesFile, codes());
       return send(res, 200, { ok: true, uuid: player.uuid, cape: entry.cape });
+    }
+    if (p === '/admin/codes') {
+      let body;
+      try { body = await readBody(req); } catch (e) { return send(res, 400, { error: e.message }); }
+      const { name, serverId, accessToken, action, cape, uses, count } = body;
+      if (!challenges.has(serverId)) return send(res, 400, { error: 'unknown or expired challenge' });
+      if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return send(res, 400, { error: 'bad name' });
+
+      const player = await verifyPlayer({ name, serverId, accessToken });
+      if (!player) return send(res, 403, { error: 'Mojang could not verify this session', verify: 'failed' });
+      challenges.delete(serverId);
+      if (!ADMIN_UUIDS.includes(player.uuid)) return send(res, 403, { error: 'not an admin' });
+
+      const all = codes();
+      if (action === 'list') {
+        return send(res, 200, {
+          codes: Object.values(all).map((e) => ({ cape: e.cape, uses: e.uses, redeemed: (e.redeemed || []).length, created: e.created || null })),
+        });
+      }
+      if (action !== 'create') return send(res, 400, { error: 'bad action' });
+      if (!catalog().some((c) => c.id === cape && !c.public)) return send(res, 400, { error: 'bad cape: must be a non-public cape' });
+      const n = count === undefined ? 1 : Number(count);
+      if (!Number.isInteger(n) || n < 1 || n > 100) return send(res, 400, { error: 'count must be 1 to 100' });
+      const u = uses === undefined ? 1 : Number(uses);
+      if (!Number.isInteger(u) || u < 0 || u > 10000) return send(res, 400, { error: 'uses must be 0 (unlimited) to 10000' });
+
+      const made = [];
+      for (let i = 0; i < n; i++) {
+        let code;
+        let hash;
+        do {
+          code = newCode();
+          hash = crypto.createHash('sha256').update(code).digest('hex');
+        } while (all[hash]);
+        all[hash] = { cape, uses: u, redeemed: [], created: new Date().toISOString() };
+        made.push(code);
+      }
+      writeCodes(all);
+      return send(res, 200, { ok: true, cape, uses: u, codes: made });
     }
     if (p === '/select') {
       let body;

@@ -34,7 +34,7 @@ function show(view) {
   $$('.nav').forEach((n) => n.classList.toggle('active', n.dataset.view === view));
   $$('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
   if (view === 'mods') renderMods();
-  if (view === 'cosmetics') renderCapes();
+  if (view === 'cosmetics') { renderCapes(); renderAdminCodes(); }
 }
 $$('.nav').forEach((n) => n.addEventListener('click', () => show(n.dataset.view)));
 
@@ -407,7 +407,62 @@ async function redeemCapeCode() {
     button.disabled = false;
   }
 }
+const ADMIN_UUID = '5b79930d65184ca08b836bb77386cecf';
+
+async function adminCall(request) {
+  return swift.call('capes:admin', request);
+}
+
+async function renderAdminCodes() {
+  const panel = $('#adminCodes');
+  const isAdmin = !!state.account && String(state.account.uuid || '').replace(/-/g, '').toLowerCase() === ADMIN_UUID;
+  panel.hidden = !isAdmin;
+  if (!isAdmin) return;
+  const select = $('#adminCape');
+  if (!select.options.length) {
+    try {
+      const data = await swift.call('capes:catalog');
+      const hidden = data.capes.filter((c) => !c.public);
+      select.replaceChildren(...hidden.map((c) => el('option', { value: c.id, textContent: c.name })));
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+  try {
+    const { codes } = await adminCall({ action: 'list' });
+    $('#adminList').replaceChildren(...codes.map((c) => el('div', {
+      className: 'admin-row',
+      textContent: `${c.cape} · ${c.redeemed}/${c.uses || 'unlimited'} used · ${c.created ? c.created.slice(0, 10) : ''}`,
+    })));
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+async function createAdminCodes() {
+  const button = $('#adminCreate');
+  const cape = $('#adminCape').value;
+  const uses = Number($('#adminUses').value);
+  const count = Number($('#adminCount').value);
+  if (!cape) { toast('Pick a cape first.', true); return; }
+  button.disabled = true;
+  try {
+    const r = await adminCall({ action: 'create', cape, uses, count });
+    const out = $('#adminOut');
+    out.hidden = false;
+    out.value = r.codes.join('\n');
+    out.select();
+    toast(`Created ${r.codes.length} code${r.codes.length === 1 ? '' : 's'} for ${cape}`);
+    renderAdminCodes();
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 $('#capeRedeem').addEventListener('click', redeemCapeCode);
+$('#adminCreate').addEventListener('click', createAdminCodes);
 $('#capeCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') redeemCapeCode(); });
 
 // ---- settings --------------------------------------------------------------------
