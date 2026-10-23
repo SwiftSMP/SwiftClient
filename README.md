@@ -176,6 +176,26 @@ discarded. A challenge is only spent when verification succeeds, so the launcher
 Stats are anonymous: a random install id, the version and a heartbeat; `/stats` returns
 `{users, online}`. Each heartbeat is a KV write, so presence uses a 25-minute TTL.
 
+## Android (PojavLauncher)
+
+The launcher is Windows-only, but the mod runs on Android inside
+[PojavLauncher](https://pojavlauncherteam.github.io/), which runs Minecraft Java through Fabric.
+
+1. Install the Minecraft version you want in PojavLauncher **with Fabric**.
+2. Download `swiftclient-<minecraft version>.jar` for that version from the
+   [latest release](https://github.com/SwiftSMP/SwiftClient/releases/latest) — every supported
+   version is attached there as its own asset — and drop it into that instance's `mods` folder.
+3. In the instance's **JVM arguments**, add
+   `-Dswiftclient.capeApi=https://capes.swiftsmp.com`. Optionally also
+   `-Dswiftclient.server.address=swiftsmp.net -Dswiftclient.server.name=SwiftSMP`.
+   Without `capeApi` the mod logs `capes: off` and skips cape lookups entirely.
+
+What works: capes, the HUD mods, the SwiftClient title screen, the SwiftSMP server pin and the
+vanilla-screen theme. Caveats: the Right Shift menu and Zoom need a physical keyboard — map them in
+Pojav's controls, because touch input does not reach the mod's key checks. Discord Rich Presence is
+launcher-side and therefore unavailable on Android. There is no SwiftClient updater on mobile; update
+by downloading a newer jar.
+
 ## Accounts
 
 SwiftClient signs in with Microsoft only. There is no offline/"cracked" account mode for people who
