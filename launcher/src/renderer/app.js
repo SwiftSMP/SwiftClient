@@ -391,6 +391,25 @@ async function renderCapes() {
   grid.replaceChildren(card(null), ...data.capes.map(card));
 }
 
+async function redeemCapeCode() {
+  const input = $('#capeCode');
+  const button = $('#capeRedeem');
+  if (!state.account) { askToSignIn(); return; }
+  button.disabled = true;
+  try {
+    const r = await swift.call('capes:redeem', input.value);
+    input.value = '';
+    toast(`Unlocked the ${r.cape} cape`);
+    renderCapes();
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+$('#capeRedeem').addEventListener('click', redeemCapeCode);
+$('#capeCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') redeemCapeCode(); });
+
 // ---- settings --------------------------------------------------------------------
 
 function bindSettings(curated, totalMemMb) {

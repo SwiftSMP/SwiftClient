@@ -27,6 +27,10 @@ const PRESENCE_TTL = 25 * 60;
 const normUuid = (u) => String(u || '').toLowerCase().replace(/-/g, '');
 const isUuid = (u) => /^[0-9a-f]{32}$/.test(u);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sha256Hex = async (text) => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+};
 
 function send(status, body, headers = {}) {
   return new Response(status === 204 ? null : JSON.stringify(body), {
@@ -195,6 +199,35 @@ export async function handle(request, env) {
       try { body = await readBody(request); } catch (e) { return send(400, { error: e.message }); }
       const result = await heartbeat(env, body);
       return result ? send(200, result) : send(400, { error: 'bad install id' });
+    }
+    if (p === '/redeem') {
+      let body;
+      try { body = await readBody(request); } catch (e) { return send(400, { error: e.message }); }
+      const { name, serverId, code, accessToken } = body;
+      if (!/^[0-9a-f]{32}$/.test(serverId || '') || !(await env.CAPES.get(`ch:${serverId}`))) {
+        return send(400, { error: 'unknown or expired challenge' });
+      }
+      if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return send(400, { error: 'bad name' });
+      if (typeof code !== 'string' || !/^[A-Za-z0-9-]{6,64}$/.test(code)) return send(400, { error: 'bad code' });
+
+      const verified = await verifyPlayer(env, { name, serverId, accessToken });
+      if (verified.failed) return send(403, { error: 'Mojang could not verify this session', verify: 'failed', reason: verified.failed });
+      await env.CAPES.delete(`ch:${serverId}`);
+
+      const hash = await sha256Hex(code.toUpperCase());
+      const codes = (await env.CAPES.get('codes', 'json')) || {};
+      const entry = codes[hash];
+      if (!entry) return send(404, { error: 'That code is not valid.' });
+      const redeemed = entry.redeemed || [];
+      if (entry.uses && redeemed.length >= entry.uses) return send(409, { error: 'That code has already been used.' });
+      if (redeemed.includes(verified.uuid)) return send(409, { error: 'You already have this cape.' });
+
+      const grants = (await env.CAPES.get('grants', 'json')) || {};
+      grants[verified.uuid] = [...new Set([...(grants[verified.uuid] || []), entry.cape])];
+      entry.redeemed = [...redeemed, verified.uuid];
+      await env.CAPES.put('grants', JSON.stringify(grants));
+      await env.CAPES.put('codes', JSON.stringify(codes));
+      return send(200, { ok: true, uuid: verified.uuid, cape: entry.cape });
     }
     if (p === '/select') {
       let body;

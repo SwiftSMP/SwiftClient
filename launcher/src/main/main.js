@@ -157,6 +157,7 @@ const handlers = {
 
   'capes:catalog': async () => capes.catalog(auth.current() && auth.current().uuid),
   'capes:select': async (_e, id) => capes.select(await auth.session(), id),
+  'capes:redeem': async (_e, code) => capes.redeem(await auth.session(), code),
 
   'game:running': () => !!game,
   'game:launch': async (_e, opts = {}) => launch(opts),

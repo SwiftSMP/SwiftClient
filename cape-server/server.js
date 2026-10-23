@@ -39,6 +39,14 @@ const grantsFile = path.join(DATA_DIR, 'grants.json');
 const installsFile = path.join(DATA_DIR, 'installs.json');
 
 const readJson = (file, fallback) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; } };
+const writeJson = (file, value) => {
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
+  fs.renameSync(tmp, file);
+};
+// Redeem codes: only SHA-256 hashes are stored, so the file leaks nothing usable.
+const codesFile = path.join(DATA_DIR, 'codes.json');
+const codes = () => readJson(codesFile, {});
 const catalog = () => readJson(path.join(CAPES_DIR, 'catalog.json'), []);
 let selections = readJson(selectionsFile, {});
 
@@ -198,6 +206,31 @@ async function handle(req, res) {
       try { body = await readBody(req); } catch (e) { return send(res, 400, { error: e.message }); }
       const result = heartbeat(body);
       return result ? send(res, 200, result) : send(res, 400, { error: 'bad install id' });
+    }
+    if (p === '/redeem') {
+      let body;
+      try { body = await readBody(req); } catch (e) { return send(res, 400, { error: e.message }); }
+      const { name, serverId, code, accessToken } = body;
+      if (!challenges.has(serverId)) return send(res, 400, { error: 'unknown or expired challenge' });
+      if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return send(res, 400, { error: 'bad name' });
+      if (typeof code !== 'string' || !/^[A-Za-z0-9-]{6,64}$/.test(code)) return send(res, 400, { error: 'bad code' });
+
+      const player = await verifyPlayer({ name, serverId, accessToken });
+      if (!player) return send(res, 403, { error: 'Mojang could not verify this session', verify: 'failed' });
+      challenges.delete(serverId);
+
+      const hash = crypto.createHash('sha256').update(code.toUpperCase()).digest('hex');
+      const entry = codes()[hash];
+      if (!entry) return send(res, 404, { error: 'That code is not valid.' });
+      if (entry.uses && (entry.redeemed || []).length >= entry.uses) return send(res, 409, { error: 'That code has already been used.' });
+      if ((entry.redeemed || []).includes(player.uuid)) return send(res, 409, { error: 'You already have this cape.' });
+
+      const grants = readJson(grantsFile, {});
+      grants[player.uuid] = [...new Set([...(grants[player.uuid] || []), entry.cape])];
+      writeJson(grantsFile, grants);
+      entry.redeemed = [...(entry.redeemed || []), player.uuid];
+      writeJson(codesFile, codes());
+      return send(res, 200, { ok: true, uuid: player.uuid, cape: entry.cape });
     }
     if (p === '/select') {
       let body;

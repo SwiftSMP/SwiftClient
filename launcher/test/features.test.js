@@ -90,6 +90,48 @@ test('cape Worker refuses a bad token and keeps the challenge until it is used',
   }
 });
 
+test('cape Worker redeems a code once per player and only for a verified session', async () => {
+  const { handle } = await import('../../cape-server/worker/src/index.js');
+  const crypto = require('crypto');
+  const hash = crypto.createHash('sha256').update('STAFF-TEST-1234').digest('hex');
+  const store = kvStore({ codes: JSON.stringify({ [hash]: { cape: 'staff', uses: 0, redeemed: [] } }) });
+  const env = workerEnv(store);
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts = {}) => {
+    if (String(url).includes('hasJoined')) return new Response(null, { status: 204 });
+    if (String(url).includes('api.minecraftservices.com')) {
+      return (opts.headers && opts.headers.Authorization) === `Bearer ${TOKEN}`
+        ? new Response(JSON.stringify(NOTCH)) : new Response(null, { status: 401 });
+    }
+    return new Response(null, { status: 204 });
+  };
+  try {
+    const req = (p, body) => handle(new Request(`https://capes.test${p}`, body ? { method: 'POST', body: JSON.stringify(body) } : {}), env);
+    const json = async (p, body) => { const r = await req(p, body); return { status: r.status, body: await r.json() }; };
+    const challenge = async () => (await json('/auth/challenge', {})).body.serverId;
+
+    // An unverified player cannot redeem, and the code is not spent.
+    const unverified = await json('/redeem', { name: 'Notch', serverId: await challenge(), code: 'STAFF-TEST-1234' });
+    assert.strictEqual(unverified.status, 403);
+
+    const ok = await json('/redeem', { name: 'Notch', serverId: await challenge(), code: 'staff-test-1234', accessToken: TOKEN });
+    assert.strictEqual(ok.status, 200);
+    assert.strictEqual(ok.body.cape, 'staff');
+
+    // The same player cannot redeem it again, and a wrong code is refused.
+    assert.strictEqual((await json('/redeem', { name: 'Notch', serverId: await challenge(), code: 'STAFF-TEST-1234', accessToken: TOKEN })).status, 409);
+    assert.strictEqual((await json('/redeem', { name: 'Notch', serverId: await challenge(), code: 'NOPE-NOPE-NOPE', accessToken: TOKEN })).status, 404);
+
+    // The cape is now unlocked for the player.
+    const available = await json(`/players/${NOTCH.id}/available`);
+    assert.ok(available.body.capes.includes('staff'));
+    // The raw code is never stored, only its hash.
+    assert.ok(!JSON.stringify([...store.map.values()]).includes('STAFF-TEST-1234'));
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test('cape Worker counts installs and online launchers', async () => {
   const { handle } = await import('../../cape-server/worker/src/index.js');
   const env = workerEnv(kvStore());

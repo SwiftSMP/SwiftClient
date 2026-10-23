@@ -99,6 +99,53 @@ class Capes {
     }
   }
 
+  /**
+   * Redeem a code for a cape (staff and OG capes). Proves the player with the same join/token
+   * handshake as select, then the server adds the cape to that player's account.
+   */
+  async redeem(session, code) {
+    if (!this.base) throw new Error('Shared capes are not configured.');
+    const clean = String(code || '').trim();
+    if (!clean) throw new Error('Enter a code first.');
+    let serverId;
+    try {
+      ({ serverId } = await fetchJson(`${this.base}/auth/challenge`, { method: 'POST' }));
+    } catch (e) {
+      throw friendlyCapeError(e);
+    }
+    try {
+      await fetchJson(SESSION_JOIN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: session.accessToken, selectedProfile: session.uuid, serverId }),
+      });
+    } catch (e) {
+      if (e.status === 401 || e.status === 403) {
+        throw new Error(`Mojang rejected the session for ${session.name}. Sign out and back in, then try again.`);
+      }
+      throw new Error(`Could not reach Mojang to confirm the session (${e.status ? `HTTP ${e.status}` : 'network error'}). Try again in a moment.`);
+    }
+    const body = { name: session.name, serverId, code: clean };
+    try {
+      return await fetchJson(`${this.base}/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      if (e.status !== 403 || !/could not verify/i.test(serverError(e))) throw friendlyCapeError(e);
+      try {
+        return await fetchJson(`${this.base}/redeem`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, accessToken: session.accessToken }),
+        });
+      } catch (retryError) {
+        throw friendlyCapeError(retryError);
+      }
+    }
+  }
+
   async postSelect(body) {
     try {
       return await fetchJson(`${this.base}/select`, {
