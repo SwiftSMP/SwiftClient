@@ -32,6 +32,9 @@ const SESSION_SERVER = process.env.SESSION_SERVER || 'https://sessionserver.moja
 const PROFILE_URL = process.env.PROFILE_URL || 'https://api.minecraftservices.com/minecraft/profile';
 const USER_AGENT = 'SwiftClient-Capes/1.1 (+https://swiftsmp.com)';
 const PRESENCE_TTL_MS = 25 * 60_000;
+// Mojang 403s requests from Cloudflare Workers' egress IPs, so the Worker verifies sessions
+// through this server instead. Set the same value here and as MOJANG_RELAY_KEY on the Worker.
+const RELAY_SECRET = process.env.RELAY_SECRET || '';
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const selectionsFile = path.join(DATA_DIR, 'selections.json');
@@ -88,38 +91,45 @@ const presence = new Map();
 /** Mojang's own check: the launcher called session/minecraft/join with this serverId. */
 async function handshakeProfile(name, serverId) {
   const query = new URLSearchParams({ username: name, serverId });
+  let lastStatus = 0;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const r = await fetch(`${SESSION_SERVER}/session/minecraft/hasJoined?${query}`, {
         headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
       });
+      lastStatus = r.status;
       if (r.status === 200) {
         const profile = await r.json();
-        if (isUuid(normUuid(profile.id))) return profile;
+        if (isUuid(normUuid(profile.id))) return { profile };
       }
-    } catch { /* network hiccup: try once more */ }
+    } catch { /* network hiccup: try once more */ lastStatus = -1; }
     if (attempt === 0) await sleep(250);
   }
-  return null;
+  return { profile: null, status: lastStatus };
 }
 
 /** Fallback proof: Mojang confirms the token belongs to a real Minecraft account. */
 async function tokenProfile(accessToken) {
-  if (typeof accessToken !== 'string' || !/^[A-Za-z0-9._~+/=-]{20,4096}$/.test(accessToken)) return null;
+  if (typeof accessToken !== 'string' || !/^[A-Za-z0-9._~+/=-]{20,4096}$/.test(accessToken)) {
+    return { profile: null, status: 0, note: accessToken ? 'bad-format' : 'missing' };
+  }
   try {
     const r = await fetch(PROFILE_URL, {
       headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': USER_AGENT, Accept: 'application/json' },
     });
-    if (r.status !== 200) return null;
+    if (r.status !== 200) return { profile: null, status: r.status };
     const profile = await r.json();
-    return isUuid(normUuid(profile.id)) ? profile : null;
-  } catch { return null; }
+    return isUuid(normUuid(profile.id)) ? { profile } : { profile: null, status: -2 };
+  } catch { return { profile: null, status: -1 }; }
 }
 
 async function verifyPlayer({ name, serverId, accessToken }) {
-  const profile = (await handshakeProfile(name, serverId)) || (await tokenProfile(accessToken));
-  if (!profile) return null;
-  return { uuid: normUuid(profile.id), name: String(profile.name || name) };
+  const handshake = await handshakeProfile(name, serverId);
+  if (handshake.profile) return { uuid: normUuid(handshake.profile.id), name: String(handshake.profile.name || name) };
+  const token = await tokenProfile(accessToken);
+  if (token.profile) return { uuid: normUuid(token.profile.id), name: String(token.profile.name || name) };
+  // Say which check refused, so a failed redeem/select/admin call can be diagnosed from the UI.
+  return { failed: `hasJoined=${handshake.status}${token.note ? `(${token.note})` : ` token=${token.status}`}` };
 }
 
 function stats() {
@@ -205,6 +215,25 @@ async function handle(req, res) {
       const uuid = normUuid(m[1]);
       return send(res, 200, { selected: selections[uuid]?.cape || null, capes: available(uuid).map((c) => c.id) });
     }
+    // ---- Mojang relay (Worker verification only) ----
+    if (p === '/mojang/hasJoined' || p === '/mojang/profile') {
+      if (!RELAY_SECRET || req.headers['x-relay-key'] !== RELAY_SECRET) return send(res, 403, { error: 'relay key' });
+      try {
+        let r;
+        if (p === '/mojang/hasJoined') {
+          r = await fetch(`${SESSION_SERVER}/session/minecraft/hasJoined?${url.searchParams}`, {
+            headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+          });
+        } else {
+          r = await fetch(PROFILE_URL, {
+            headers: { Authorization: req.headers.authorization || '', 'User-Agent': USER_AGENT, Accept: 'application/json' },
+          });
+        }
+        return send(res, r.status, r.status === 200 ? await r.json() : { error: 'no profile' });
+      } catch {
+        return send(res, 502, { error: 'mojang unreachable' });
+      }
+    }
     return send(res, 404, { error: 'not found' });
   }
 
@@ -229,8 +258,9 @@ async function handle(req, res) {
       if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return send(res, 400, { error: 'bad name' });
       if (typeof code !== 'string' || !/^[A-Za-z0-9-]{6,64}$/.test(code)) return send(res, 400, { error: 'bad code' });
 
-      const player = await verifyPlayer({ name, serverId, accessToken });
-      if (!player) return send(res, 403, { error: 'Mojang could not verify this session', verify: 'failed' });
+      const verified = await verifyPlayer({ name, serverId, accessToken });
+      if (verified.failed) return send(res, 403, { error: 'Mojang could not verify this session', verify: 'failed', reason: verified.failed });
+      const player = verified;
       challenges.delete(serverId);
 
       const hash = crypto.createHash('sha256').update(code.toUpperCase()).digest('hex');
@@ -253,8 +283,9 @@ async function handle(req, res) {
       if (!challenges.has(serverId)) return send(res, 400, { error: 'unknown or expired challenge' });
       if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return send(res, 400, { error: 'bad name' });
 
-      const player = await verifyPlayer({ name, serverId, accessToken });
-      if (!player) return send(res, 403, { error: 'Mojang could not verify this session', verify: 'failed' });
+      const verified = await verifyPlayer({ name, serverId, accessToken });
+      if (verified.failed) return send(res, 403, { error: 'Mojang could not verify this session', verify: 'failed', reason: verified.failed });
+      const player = verified;
       challenges.delete(serverId);
       if (!ADMIN_UUIDS.includes(player.uuid)) return send(res, 403, { error: 'not an admin' });
 
@@ -292,9 +323,10 @@ async function handle(req, res) {
       if (!challenges.has(serverId)) return send(res, 400, { error: 'unknown or expired challenge' });
       if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return send(res, 400, { error: 'bad name' });
 
-      const player = await verifyPlayer({ name, serverId, accessToken });
+      const verified = await verifyPlayer({ name, serverId, accessToken });
       // Keep the challenge until it is actually used: the launcher retries it with its token.
-      if (!player) return send(res, 403, { error: 'Mojang could not verify this session', verify: 'failed' });
+      if (verified.failed) return send(res, 403, { error: 'Mojang could not verify this session', verify: 'failed', reason: verified.failed });
+      const player = verified;
       challenges.delete(serverId);
 
       if (cape === null || cape === '') {
