@@ -1,8 +1,12 @@
 node_modules/
 launcher/dist/
+launcher/dist-build/
 mod/build/
 mod/.gradle/
 mod/run/
+mod/legacy/build/
+mod/legacy/.gradle/
+mod/legacy/run/
 cape-server/data/
 *.log
 mod/dist/

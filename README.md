@@ -88,6 +88,8 @@ cd mod
 ./gradlew dist            # 26.3 -> mod/dist/swiftclient-1.1.0+26.3.jar and index.json
 ./gradlew dist -Pminecraft_version=26.2 -Pfabric_api_version=0.161.0+26.2
 ./gradlew dist -Pminecraft_version=26.1 -Pfabric_api_version=0.155.3+26.1.2
+node build-1.21.js         # all 12 1.21.x releases from mod/legacy
+node build-1.21.js 1.21.8  # or just one
 
 # 2. the launcher
 cd ../launcher
@@ -129,13 +131,20 @@ Run anyway"). To remove the warning, buy an OV/EV code-signing certificate and s
 The launcher reads `mod/dist/index.json` (`{"<mc version>": "<jar>"}`) and installs the
 matching jar; versions without one still get all performance mods, Discord presence (via log
 parsing) and imported mods, but no SwiftClient capes or window title (the picker shows
-"no capes"). **26.1, 26.2 and 26.3** are built; add another version with
+"no capes"). **26.1, 26.2 and 26.3** are built from `mod/`; add another version with
 `./gradlew dist -Pminecraft_version=<mc> -Pfabric_api_version=<fabric api build for that version>`
-(each run adds its jar to `index.json`). 26.x use Mojang's own names, so the code usually builds
-as is when classes did not move. For **1.21.x** the mod has to be ported: the mixins use Yarn /
-intermediary names there (`PlayerSkin`/`SkinTextures` instead of `ClientAsset`, `ResourceLocation`
-instead of `Identifier`), so it is a real port, not a rebuild. Those versions still launch with
-everything the launcher provides.
+(each run adds its jar to `index.json`).
+
+**Every 1.21.x release (1.21 - 1.21.11)** is built from `mod/legacy`, which reuses the same
+menu, HUD, config and cape code as `mod/src/main` but keeps a small platform layer per
+rendering era: `src/platform/1.21.9` (1.21.9 - 1.21.11), `1.21.6` (1.21.6 - 1.21.8) and
+`1.21.4` (1.21 - 1.21.5), plus `legacy` shared by the two older eras. The eras differ in
+matrix API (`Matrix3x2fStack` vs `PoseStack`), resource names (`Identifier` vs
+`ResourceLocation`), skin textures (`ClientAsset` vs `ResourceLocation` capes) and mouse/key
+events; the shared layer hides all of that. `node mod/build-1.21.js` builds all twelve jars
+into `mod/dist` and adds them to `index.json` (`node mod/build-1.21.js 1.21.8` builds one).
+The zoom tweak changes the FOV option on 1.21.x instead of hooking `GameRenderer`, because
+`getFov` returns `double` up to 1.21.3 and `float` afterwards.
 
 ## Cape server
 

@@ -1,0 +1,70 @@
+plugins {
+	// The remapping variant: 1.21.x is still obfuscated, unlike the 26.x default plugin.
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+version = "${project.version}+${project.minecraft_version}"
+base { archivesName = 'swiftclient' }
+
+// One shared UI, one platform layer per 1.21.x API era:
+
+//   1.21.11 for 1.21.11           (Identifier instead of ResourceLocation)
+//   1.21.9  for 1.21.9 - 1.21.10  (ResourceLocation, ClientAsset skins, MouseButtonEvent)
+//   1.21.6  for 1.21.6 - 1.21.8   (Matrix3x2fStack, ResourceLocation skins)
+//   1.21.4  for 1.21.2 - 1.21.5   (PoseStack, ResourceLocation skins, render-type blits)
+//   1.21    for 1.21 - 1.21.1     (PoseStack, and the removal-free plain blit overloads)
+// src/platform/modern is shared by the two 1.21.9+ eras, src/platform/legacy by the older ones.
+// Selected with -Plegacy_era=... by build-1.21.js.
+def parts = project.minecraft_version.tokenize('.')
+def patch = parts.size() > 2 ? parts[2].tokenize('-')[0] as int : 0
+def autoEra = patch >= 11 ? '1.21.11' : (patch >= 9 ? '1.21.9' : (patch >= 6 ? '1.21.6' : (patch >= 2 ? '1.21.4' : '1.21')))
+def era = project.findProperty('legacy_era') ?: autoEra
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	// Fabric Loader supplies Mixin at runtime; Loom's remapping needs the annotations at compile time.
+	compileOnly "net.fabricmc:sponge-mixin:0.17.4+mixin.0.8.7"
+}
+
+sourceSets {
+	main {
+		java {
+			def dirs = ['src/shared/java', "src/platform/${era}/java"]
+			if (era == '1.21.9' || era == '1.21.11') dirs << 'src/platform/modern/java'
+			else dirs << 'src/platform/legacy/java'
+			srcDirs = dirs
+		}
+		resources {
+			srcDirs = ['src/main/resources']
+		}
+	}
+}
+
+processResources {
+	def props = [version: project.version, minecraft_version: project.minecraft_version]
+	inputs.properties props
+	filesMatching('fabric.mod.json') { expand props }
+}
+
+tasks.withType(JavaCompile).configureEach { it.options.release = 21 }
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+// Adds the jar to ../dist/index.json, the map the launcher reads.
+tasks.register('dist') {
+	dependsOn 'build'
+	doLast {
+		def distDir = file('../dist')
+		distDir.mkdirs()
+		def jar = tasks.remapJar.archiveFile.get().asFile
+		copy { from jar; into distDir }
+		def indexFile = new File(distDir, 'index.json')
+		def index = indexFile.exists() ? new groovy.json.JsonSlurper().parse(indexFile) : [:]
+		index[project.minecraft_version] = jar.name
+		indexFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(index))
+	}
+}
