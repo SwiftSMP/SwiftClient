@@ -1,7 +1,7 @@
 {
   "name": "swiftclient",
   "productName": "SwiftClient",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "SwiftClient — the SwiftSMP Minecraft launcher",
   "author": "SwiftSMP",
   "license": "UNLICENSED",

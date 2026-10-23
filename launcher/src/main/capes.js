@@ -90,7 +90,9 @@ class Capes {
         return await this.postSelect({ ...body, accessToken: session.accessToken });
       } catch (retryError) {
         if (retryError.status === 403 && /could not verify/i.test(serverError(retryError))) {
-          throw new Error('Mojang would not confirm your Minecraft session. Sign out and back in from the account menu, then try again.');
+          let reason = '';
+          try { reason = JSON.parse(retryError.body || '{}').reason || ''; } catch { /* not json */ }
+          throw new Error(`Mojang would not confirm your Minecraft session${reason ? ` (${reason})` : ''}. Sign out and back in from the account menu, then try again.`);
         }
         throw retryError;
       }

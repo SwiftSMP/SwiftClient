@@ -162,7 +162,9 @@ function saveAccount(account) {
 
 function readAccount() {
   try {
-    return clean(JSON.parse(safeStorage.decryptString(fs.readFileSync(paths.account))));
+    const a = clean(JSON.parse(safeStorage.decryptString(fs.readFileSync(paths.account))));
+    // A half-written or old-schema file must not look like a signed-in account.
+    return a && a.refreshToken && a.mc && a.mc.uuid ? a : null;
   } catch { return null; }
 }
 
@@ -174,7 +176,7 @@ function clean(a) {
 }
 
 function publicAccount(a) {
-  return a ? { uuid: a.mc.uuid, name: a.mc.name } : null;
+  return a && a.mc ? { uuid: a.mc.uuid, name: a.mc.name } : null;
 }
 
 // ---- API --------------------------------------------------------------------

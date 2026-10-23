@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Notification } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -152,6 +152,8 @@ const handlers = {
   },
   'mods:toggle': (_e, mc, file, enabled) => mods.setModEnabled(mc, file, enabled),
   'mods:remove': (_e, mc, file) => mods.removeMod(mc, file),
+  'mods:search': (_e, mc, query) => mods.searchModrinth(mc, query),
+  'mods:install': (_e, mc, slug) => mods.installModrinth(mc, slug),
 
   'capes:catalog': async () => capes.catalog(auth.current() && auth.current().uuid),
   'capes:select': async (_e, id) => capes.select(await auth.session(), id),
@@ -239,6 +241,14 @@ async function launch({ join = false } = {}) {
 
 let updaterBusy = false;
 
+/** A Windows toast, so an update is noticed even when the launcher is in the background. */
+function notifyUpdate(version, body) {
+  try {
+    if (!Notification.isSupported()) return;
+    new Notification({ title: `SwiftClient ${version}`, body }).show();
+  } catch { /* notifications unavailable */ }
+}
+
 async function announceManualUpdate() {
   try {
     const release = await updates.latestRelease();
@@ -246,6 +256,7 @@ async function announceManualUpdate() {
     if (updaterBusy) return;
     const url = await updates.installerUrl(release);
     send('update:state', { state: 'manual', version: release.version, url });
+    notifyUpdate(release.version, 'A new version is out. Click the banner in SwiftClient to get it.');
   } catch { /* offline or rate limited: try again next time */ }
 }
 
@@ -258,7 +269,11 @@ function setupUpdater() {
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.on('update-available', (i) => { updaterBusy = true; send('update:state', { state: 'downloading', version: i.version }); });
-    autoUpdater.on('update-downloaded', (i) => { updaterBusy = true; send('update:state', { state: 'ready', version: i.version }); });
+    autoUpdater.on('update-downloaded', (i) => {
+      updaterBusy = true;
+      send('update:state', { state: 'ready', version: i.version });
+      notifyUpdate(i.version, 'Downloaded. Restart SwiftClient to install it.');
+    });
     autoUpdater.on('error', () => { updaterBusy = false; /* offline or no releases yet: stay quiet */ });
     autoUpdater.checkForUpdates().catch(() => {});
     // Frequent enough that a fresh release reaches players within the hour.

@@ -296,6 +296,43 @@ async function importFiles(files) {
 }
 
 $('#importBtn').addEventListener('click', async () => importFiles(await swift.call('mods:pick')));
+
+// ---- Modrinth search ---------------------------------------------------------
+
+async function searchModrinth() {
+  const mc = currentVersion();
+  const query = $('#modrinthQuery').value.trim();
+  const box = $('#modrinthResults');
+  if (query.length < 2) { toast('Type at least two characters to search Modrinth.', true); return; }
+  box.replaceChildren(el('div', { className: 'muted', textContent: 'Searching Modrinth…' }));
+  let hits = [];
+  try { hits = await swift.call('mods:search', mc, query); } catch (e) { toast(e.message, true); box.replaceChildren(); return; }
+  if (!hits.length) {
+    box.replaceChildren(el('div', { className: 'empty', textContent: `No Fabric mods for ${mc} match "${query}".` }));
+    return;
+  }
+  box.replaceChildren(...hits.map((h) => {
+    const install = el('button', { className: 'btn small primary', textContent: 'Install' });
+    install.addEventListener('click', async () => {
+      install.disabled = true;
+      install.textContent = 'Installing…';
+      const r = await swift.call('mods:install', mc, h.slug).catch((e) => ({ ok: false, problems: [e.message] }));
+      toast(r.ok ? `Installed ${r.name} ${r.version}` : (r.problems || ['Could not install']).join(' '), !r.ok);
+      install.disabled = false;
+      install.textContent = 'Install';
+      if (r.ok) renderMods();
+    });
+    return el('div', { className: 'result ok' },
+      el('div', { className: 'grow' },
+        el('b', { textContent: h.title }),
+        el('div', { className: 'muted', textContent: h.description }),
+        el('div', { className: 'ver', textContent: `${h.downloads.toLocaleString()} downloads` })),
+      install);
+  }));
+}
+
+$('#modrinthSearch').addEventListener('click', searchModrinth);
+$('#modrinthQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchModrinth(); });
 const drop = $('#dropZone');
 ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
 ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('over')));

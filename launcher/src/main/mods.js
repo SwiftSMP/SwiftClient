@@ -7,7 +7,7 @@ const path = require('path');
 const AdmZip = require('adm-zip');
 const semver = require('semver');
 const { paths } = require('./config');
-const { fetchJsonCached, downloadAll } = require('./download');
+const { fetchJson, fetchJsonCached, downloadAll } = require('./download');
 
 const MODRINTH = 'https://api.modrinth.com/v2';
 
@@ -202,6 +202,52 @@ async function syncMods(mc, settings, { swiftMod, onProgress = () => {} } = {}) 
   return { installed: Object.keys(next), unavailable };
 }
 
+// ---- Modrinth browser ---------------------------------------------------------
+
+/** Fabric mods on Modrinth that have a build for this Minecraft version. */
+async function searchModrinth(mc, query) {
+  const url = `${MODRINTH}/search?` + new URLSearchParams({
+    query: query || '',
+    limit: '20',
+    index: 'relevance',
+    facets: JSON.stringify([['project_type:mod'], ['categories:fabric'], [`versions:${mc}`]]),
+  });
+  const data = await fetchJson(url);
+  return (data.hits || []).map((h) => ({
+    slug: h.slug,
+    title: h.title,
+    description: h.description || '',
+    downloads: h.downloads || 0,
+    author: h.author || '',
+  }));
+}
+
+/** Downloads a Modrinth project's best Fabric build for `mc` into that instance's mods folder. */
+async function installModrinth(mc, slug) {
+  const managed = managedIds(mc);
+  if (managed.has(slug)) return { ok: false, problems: [`${managed.get(slug)} is already included by SwiftClient.`] };
+
+  const project = await fetchJson(`${MODRINTH}/project/${slug}`).catch(() => null);
+  if (!project) return { ok: false, problems: [`Modrinth project ${slug} not found.`] };
+  const resolved = await resolveModrinth(slug, mc);
+  if (!resolved) return { ok: false, problems: [`${project.title} has no Fabric build for Minecraft ${mc}.`] };
+
+  const dir = modsDir(mc);
+  fs.mkdirSync(dir, { recursive: true });
+  // Replace an older copy of the same mod, unless SwiftClient manages it.
+  const target = path.join(dir, resolved.filename);
+  for (const m of listMods(mc)) {
+    if (!m.managed && m.file !== resolved.filename && path.join(dir, m.file) !== target) {
+      const meta = readModMeta(path.join(dir, m.file));
+      if (meta.id && meta.id === project.id) { try { fs.unlinkSync(path.join(dir, m.file)); } catch { /* gone */ } }
+    }
+  }
+  await downloadAll([{ url: resolved.url, file: target, sha512: resolved.sha512, size: resolved.size }],
+    { label: project.title });
+  const meta = readModMeta(target);
+  return { ok: true, name: meta.name || project.title, version: resolved.version, file: resolved.filename };
+}
+
 // ---- user mods --------------------------------------------------------------
 
 function listMods(mc) {
@@ -298,4 +344,5 @@ function removeMod(mc, file) {
 
 module.exports = {
   CURATED, syncMods, listMods, checkMod, importMod, setModEnabled, removeMod, readModMeta, versionMatches, modsDir,
+  searchModrinth, installModrinth,
 };
