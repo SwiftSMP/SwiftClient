@@ -110,6 +110,17 @@ public final class Theme {
 		g.fill(x + w - 2, y + h - 2, x + w - 1, y + h - 1, color);
 	}
 
+	/** A card: 1px border colour around a rounded surface. */
+	public static void card(Gfx g, int x, int y, int w, int h, int fill, int border) {
+		round(g, x, y, w, h, border);
+		round(g, x + 1, y + 1, w - 2, h - 2, fill);
+	}
+
+	/** The site's orange→gold hairline along the top of a card. */
+	public static void brandEdge(Gfx g, int x, int y, int w) {
+		for (int i = x + 2; i < x + w - 2; i++) g.fill(i, y, i + 1, y + 1, mix(ACCENT, GOLD, (i - x) / (float) w));
+	}
+
 	/** Pill toggle switch, 20x10. */
 	public static void toggle(Gfx g, int x, int y, boolean on, float hover) {
 		int track = on ? mix(ACCENT, ACCENT_BRIGHT, hover) : mix(0x40FFFFFF, 0x60FFFFFF, hover);

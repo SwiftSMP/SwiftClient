@@ -275,6 +275,7 @@ public final class SwiftMenuScreen extends SwiftScreen {
 			new Row("hud", Items.SPYGLASS, "SwiftClient HUD", "Every HUD mod at once (F6)", () -> c.hudVisible, v -> c.hudVisible = v),
 			new Row("hudbg", Items.PAINTING, "HUD backgrounds", "Glass behind HUD mods", () -> c.hudBackground, v -> c.hudBackground = v),
 			new Row("score", Items.OAK_SIGN, "Scoreboard", "The sidebar on the right", () -> !c.hideScoreboard, v -> c.hideScoreboard = !v),
+			new Row("boss", Items.DRAGON_HEAD, "Boss bar", "Boss and event bars on top", () -> !c.hideBossBar, v -> c.hideBossBar = !v),
 			new Row("effects", Items.POTION, "Potion effects", "Effect icons, top right", () -> !c.hideEffects, v -> c.hideEffects = !v),
 			new Row("titles", Items.NAME_TAG, "Titles", "Big titles and subtitles", () -> !c.hideTitles, v -> c.hideTitles = !v),
 			new Row("helditem", Items.ITEM_FRAME, "Held item name", "Name above the hotbar", () -> !c.hideHeldItemName, v -> c.hideHeldItemName = !v));
@@ -383,7 +384,7 @@ public final class SwiftMenuScreen extends SwiftScreen {
 		}
 
 		int ty = y + hh + 50;
-		String[] tips = {"Right Shift opens this menu anywhere.", "Capes and mods live in the SwiftClient launcher.", "F6 hides every SwiftClient HUD mod."};
+		String[] tips = {"Right Shift opens this menu anywhere.", "Edit HUD: drag to move, scroll to resize.", "Capes and mods live in the SwiftClient launcher."};
 		for (int i = 0; i < tips.length; i++) {
 			Theme.round(g, x + 2, ty + 3 + i * 12, 3, 3, 1, Theme.ACCENT);
 			g.text(font, font.plainSubstrByWidth(tips[i], w - 10), x + 9, ty + i * 12, Theme.MUTED, false);
