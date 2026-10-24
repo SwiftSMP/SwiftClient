@@ -40,7 +40,7 @@ public final class SwiftTitleScreen extends SwiftScreen {
 	private void openOptions() {
 		Minecraft mc = Minecraft.getInstance();
 		Screen options = Compat.optionsScreen(this, mc.options);
-		if (options != null) mc.gui.setScreen(options);
+		if (options != null) Compat.setScreen(options);
 	}
 
 	@Override
@@ -49,7 +49,7 @@ public final class SwiftTitleScreen extends SwiftScreen {
 		// Dev/test hook: -Dswiftclient.debug=options opens vanilla Options to check the button theme.
 		String debug = System.getProperty("swiftclient.debug", "");
 		if (ticks == 60 && debug.contains("options")) openOptions();
-		if (ticks == 60 && debug.contains("titlemenu")) Minecraft.getInstance().gui.setScreen(new SwiftMenuScreen());
+		if (ticks == 60 && debug.contains("titlemenu")) Compat.setScreen(new SwiftMenuScreen());
 	}
 
 	@Override
@@ -118,19 +118,27 @@ public final class SwiftTitleScreen extends SwiftScreen {
 		clickable(bx, by, bw, 30, this::joinSwiftSmp);
 
 		int y = by + 38;
-		glassButton(g, "sp", bx, y, bw, 22, Items.GRASS_BLOCK, "Singleplayer", () -> mc.gui.setScreen(new SelectWorldScreen(this)));
+		glassButton(g, "sp", bx, y, bw, 22, Items.GRASS_BLOCK, "Singleplayer", () -> Compat.setScreen(new SelectWorldScreen(this)));
 		y += 27;
-		glassButton(g, "mp", bx, y, bw, 22, Items.ENDER_EYE, "Multiplayer", () -> mc.gui.setScreen(new JoinMultiplayerScreen(this)));
+		glassButton(g, "mp", bx, y, bw, 22, Items.ENDER_EYE, "Multiplayer", () -> Compat.setScreen(new JoinMultiplayerScreen(this)));
+		y += 27;
+		glassButton(g, "servers", bx, y, bw, 22, Items.COMPASS, "Servers", () -> Compat.setScreen(new PartnersScreen(this)));
 		y += 27;
 		int half = (bw - 5) / 2;
 		glassButton(g, "opt", bx, y, half, 22, Items.COMPARATOR, "Options", this::openOptions);
 		glassButton(g, "quit", bx + half + 5, y, bw - half - 5, 22, Items.BARRIER, "Quit", mc::stop);
 
+		// Lunar-style icon row under the main menu. Opens the SwiftClient menu, the in-game home
+		// for capes, mods and HUD settings. Friends and chat live in the launcher for now.
+		int iy = y + 27;
+		int iw = 22;
+		iconButton(g, "icon-menu", cx - iw / 2, iy, iw, Items.COMPASS, "SwiftClient menu", () -> Compat.setScreen(new SwiftMenuScreen()));
+
 		// small glass pills, top right
 		int px = width - 8;
 		if (FabricLoader.getInstance().isModLoaded("modmenu")) px = pill(g, "mods", px, 8, "Mods", this::openModMenu) - 5;
-		px = pill(g, "lang", px, 8, "Language", () -> mc.gui.setScreen(new LanguageSelectScreen(this, mc.options, mc.getLanguageManager()))) - 5;
-		pill(g, "menu", px, 8, "SwiftClient", () -> mc.gui.setScreen(new SwiftMenuScreen()));
+		px = pill(g, "lang", px, 8, "Language", () -> Compat.setScreen(new LanguageSelectScreen(this, mc.options, mc.getLanguageManager()))) - 5;
+		pill(g, "menu", px, 8, "SwiftClient", () -> Compat.setScreen(new SwiftMenuScreen()));
 
 		// footer
 		String left = "SwiftClient " + SwiftClientMod.version().replaceAll("\\+.*", "") + "  ·  Minecraft " + SharedConstants.getCurrentVersion().name();
@@ -139,10 +147,24 @@ public final class SwiftTitleScreen extends SwiftScreen {
 		int rw = font.width(right);
 		boolean hot = Theme.inside(mouseX, mouseY, width - rw - 6, height - 13, rw, 10);
 		g.text(font, right, width - rw - 6, height - 12, Theme.alpha(Theme.TEXT, hot ? 0.9f : 0.55f), false);
-		clickable(width - rw - 6, height - 13, rw, 10, () -> mc.gui.setScreen(new CreditsAndAttributionScreen(this)));
+		clickable(width - rw - 6, height - 13, rw, 10, () -> Compat.setScreen(new CreditsAndAttributionScreen(this)));
 
 		// fade in from the loading screen
 		if (fade < 0.99f) g.fill(0, 0, width, height, Theme.alpha(Theme.BG_DEEP, 1f - fade));
+	}
+
+	/** A square icon-only glass button; the label shows as a tooltip-style hint on hover. */
+	private void iconButton(GuiGraphicsExtractor g, String key, int x, int y, int size, net.minecraft.world.item.Item icon, String label, Runnable action) {
+		float hv = hover(key, x, y, size, size);
+		if (hv > 0.05f) Theme.glow(g, x, y, size, size, 6, hv * 0.6f);
+		Theme.glass(g, x, y, size, size, 6, Theme.mix(Theme.GLASS, 0xE0222A58, hv));
+		icon(g, icon, x + 3, y + 3);
+		if (hv > 0.5f) {
+			int tw = font.width(label) + 8;
+			g.fill(x + size / 2 - tw / 2, y - 12, x + size / 2 + tw / 2, y - 3, 0xC0000000);
+			g.text(font, label, x + size / 2 - tw / 2 + 4, y - 10, Theme.TEXT, false);
+		}
+		clickable(x, y, size, size, action);
 	}
 
 	private void glassButton(GuiGraphicsExtractor g, String key, int x, int y, int w, int h, net.minecraft.world.item.Item icon, String label, Runnable action) {
@@ -169,7 +191,7 @@ public final class SwiftTitleScreen extends SwiftScreen {
 	private void openModMenu() {
 		try {
 			Class<?> cls = Class.forName("com.terraformersmc.modmenu.gui.ModsScreen");
-			Minecraft.getInstance().gui.setScreen((Screen) cls.getConstructor(Screen.class).newInstance(this));
+			Compat.setScreen((Screen) cls.getConstructor(Screen.class).newInstance(this));
 		} catch (ReflectiveOperationException e) {
 			SwiftClientMod.LOG.warn("Mod Menu is not available: {}", e.toString());
 		}

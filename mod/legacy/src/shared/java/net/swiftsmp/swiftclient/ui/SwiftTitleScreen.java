@@ -98,9 +98,17 @@ public final class SwiftTitleScreen extends SwiftScreen {
 		y += 27;
 		glassButton(g, "mp", bx, y, bw, 22, "Multiplayer", () -> mc.setScreen(new JoinMultiplayerScreen(this)));
 		y += 27;
+		glassButton(g, "servers", bx, y, bw, 22, "Servers", () -> mc.setScreen(new PartnersScreen(this)));
+		y += 27;
 		int half = (bw - 5) / 2;
 		glassButton(g, "opt", bx, y, half, 22, "Options", this::openOptions);
 		glassButton(g, "quit", bx + half + 5, y, bw - half - 5, 22, "Quit", mc::stop);
+
+		// Icon row under the main menu. Opens the SwiftClient menu, the in-game home for capes,
+		// mods and HUD settings. Friends and chat live in the launcher for now.
+		int iy = y + 27;
+		int iw = 22;
+		iconButton(g, "icon-menu", cx - iw / 2, iy, iw, net.minecraft.world.item.Items.COMPASS, "SwiftClient menu", () -> mc.setScreen(new SwiftMenuScreen()));
 
 		// small glass pills, top right
 		int px = width - 8;
@@ -119,6 +127,20 @@ public final class SwiftTitleScreen extends SwiftScreen {
 
 		// fade in from the loading screen
 		if (fade < 0.99f) g.fill(0, 0, width, height, Theme.alpha(Theme.BG_DEEP, 1f - fade));
+	}
+
+	/** A square icon-only glass button; the label shows as a hint on hover. */
+	private void iconButton(Gfx g, String key, int x, int y, int size, net.minecraft.world.item.Item icon, String label, Runnable action) {
+		float hv = hover(key, x, y, size, size);
+		if (hv > 0.05f) Theme.glow(g, x, y, size, size, 6, hv * 0.6f);
+		Theme.glass(g, x, y, size, size, 6, Theme.mix(Theme.GLASS, 0xE0222A58, hv));
+		icon(g, icon, x + 3, y + 3);
+		if (hv > 0.5f) {
+			int tw = font.width(label) + 8;
+			g.fill(x + size / 2 - tw / 2, y - 12, x + size / 2 + tw / 2, y - 3, 0xC0000000);
+			g.text(font, label, x + size / 2 - tw / 2 + 4, y - 10, Theme.TEXT, false);
+		}
+		clickable(x, y, size, size, action);
 	}
 
 	private void glassButton(Gfx g, String key, int x, int y, int w, int h, String label, Runnable action) {

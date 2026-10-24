@@ -28,5 +28,11 @@
     "name": "Founder",
     "description": "Here from day one",
     "public": false
+  },
+  {
+    "id": "valenmc",
+    "name": "ValenMC",
+    "description": "Partner server cape",
+    "public": true
   }
 ]

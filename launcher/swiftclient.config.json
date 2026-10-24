@@ -2,7 +2,24 @@
   "msClientId": "e11cabc0-e99f-49cd-b135-e2675239d494",
   "capeApi": "https://capes.swiftsmp.com",
   "discordClientId": "1563256248474935346",
-  "server": { "name": "SwiftSMP", "address": "swiftsmp.net" },
+  "server": {
+    "name": "SwiftSMP",
+    "address": "swiftsmp.net"
+  },
   "website": "https://swiftsmp.com",
-  "minVersion": "1.21"
+  "minVersion": "1.21",
+  "servers": [
+    {
+      "name": "SwiftSMP",
+      "address": "swiftsmp.net",
+      "partner": false,
+      "pinned": true
+    },
+    {
+      "name": "ValenMC",
+      "address": "play.valenmc.fun",
+      "partner": true,
+      "pinned": true
+    }
+  ]
 }

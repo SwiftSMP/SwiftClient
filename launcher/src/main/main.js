@@ -7,6 +7,7 @@ const { spawn } = require('child_process');
 const { paths, loadAppConfig, loadSettings, saveSettings } = require('./config');
 const { Auth } = require('./auth');
 const { Capes } = require('./capes');
+const { Social } = require('./social');
 const minecraft = require('./minecraft');
 const mods = require('./mods');
 const updates = require('./updates');
@@ -17,6 +18,7 @@ const { DiscordPresence, activityFor, parseGameOutput } = require('./discord');
 const appConfig = loadAppConfig();
 const auth = new Auth(appConfig.msClientId);
 const capes = new Capes(appConfig.capeApi);
+const social = new Social(appConfig.capeApi);
 const stats = new Stats(appConfig.capeApi);
 let win;
 let game = null; // running game process
@@ -25,6 +27,16 @@ let game = null; // running game process
 
 // The featured server's player count, from a normal Minecraft server ping.
 let serverStatus = { at: 0, value: null };
+// GitHub download totals, cached for an hour so polling does not hit the API rate limit.
+let downloadCache = { at: 0, value: null };
+async function downloadsNow(maxAgeMs = 60 * 60 * 1000) {
+  if (downloadCache.value !== null && Date.now() - downloadCache.at < maxAgeMs) return downloadCache.value;
+  try {
+    downloadCache = { at: Date.now(), value: await updates.totalDownloads() };
+  } catch { /* offline or rate limited: keep the last value */ }
+  return downloadCache.value;
+}
+
 async function serverStatusNow(maxAgeMs = 30000) {
   if (serverStatus.value && Date.now() - serverStatus.at < maxAgeMs) return serverStatus.value;
   try {
@@ -135,7 +147,7 @@ const handlers = {
     platform: `${require('os').platform()} ${require('os').arch()}`,
   }),
 
-  'stats:get': async () => ({ client: stats.last, server: await serverStatusNow() }),
+  'stats:get': async () => ({ client: stats.last, server: await serverStatusNow(), downloads: await downloadsNow() }),
 
   'versions:list': async () => {
     const list = await minecraft.listVersions(appConfig.minVersion);
@@ -159,6 +171,14 @@ const handlers = {
   'capes:select': async (_e, id) => capes.select(await auth.session(), id),
   'capes:redeem': async (_e, code) => capes.redeem(await auth.session(), code),
   'capes:admin': async (_e, request) => capes.adminCodes(await auth.session(), request),
+
+  'social:state': async () => social.state(await auth.session()),
+  'social:request': async (_e, target) => social.request(await auth.session(), String(target || '').trim()),
+  'social:accept': async (_e, from) => social.accept(await auth.session(), from),
+  'social:decline': async (_e, from) => social.decline(await auth.session(), from),
+  'social:remove': async (_e, friend) => social.remove(await auth.session(), friend),
+  'social:messages': async (_e, friend) => social.messages(await auth.session(), friend),
+  'social:send': async (_e, friend, text) => social.send(await auth.session(), friend, String(text || '')),
 
   'game:running': () => !!game,
   'game:launch': async (_e, opts = {}) => launch(opts),
@@ -198,6 +218,9 @@ async function launch({ join = false } = {}) {
   const joinServer = (join || settings.autoJoin) ? appConfig.server.address : null;
   const cmd = minecraft.buildCommand(profile, { session, gameDir, settings, launcherVersion: app.getVersion(), joinServer });
   const props = [`-Dswiftclient.server.address=${appConfig.server.address}`, `-Dswiftclient.server.name=${appConfig.server.name}`];
+  // Pinned and partner servers for the mod's server list: "name|address|partner|pinned" entries.
+  const servers = (appConfig.servers || []).map((s) => [s.name, s.address, s.partner ? 1 : 0, s.pinned ? 1 : 0].join('|'));
+  if (servers.length) props.push(`-Dswiftclient.servers=${servers.join(';')}`);
   if (appConfig.capeApi) props.push(`-Dswiftclient.capeApi=${appConfig.capeApi}`);
   cmd.args.splice(cmd.args.indexOf(profile.mainClass), 0, ...props);
 

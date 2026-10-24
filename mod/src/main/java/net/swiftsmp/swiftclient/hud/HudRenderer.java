@@ -1,5 +1,6 @@
 package net.swiftsmp.swiftclient.hud;
 
+import net.swiftsmp.swiftclient.Compat;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -13,7 +14,7 @@ public final class HudRenderer {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.player == null || !SwiftConfig.get().hudVisible) return;
 		// The HUD editor draws its own copies.
-		if (mc.gui.screen() instanceof net.swiftsmp.swiftclient.ui.SwiftScreen) return;
+		if (Compat.screen() instanceof net.swiftsmp.swiftclient.ui.SwiftScreen) return;
 		for (HudModule m : Modules.ALL) {
 			if (m.enabled() && m.visible(mc)) draw(g, mc, m, false);
 		}

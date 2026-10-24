@@ -189,6 +189,79 @@ test('cape Worker lets only the admin create and list redeem codes', async () =>
   }
 });
 
+test('cape Worker friends: request, accept, friends-only messages, remove', async () => {
+  const { handle } = await import('../../cape-server/worker/src/index.js');
+  const store = kvStore();
+  const env = workerEnv(store);
+  const realFetch = globalThis.fetch;
+  const ALICE = { id: '1'.repeat(32), name: 'Alice' };
+  const BOB = { id: '2'.repeat(32), name: 'Bob' };
+  const CAROL = { id: '3'.repeat(32), name: 'Carol' };
+  const tokens = { alice: `alice-${'a'.repeat(40)}`, bob: `bob-${'b'.repeat(40)}`, carol: `carol-${'c'.repeat(40)}` };
+  const byToken = { [tokens.alice]: ALICE, [tokens.bob]: BOB, [tokens.carol]: CAROL };
+  const byName = { Alice: ALICE, Bob: BOB, Carol: CAROL };
+  globalThis.fetch = async (url, opts = {}) => {
+    const u = String(url);
+    if (u.includes('hasJoined')) {
+      const name = new URL(u).searchParams.get('username');
+      return byName[name] ? new Response(JSON.stringify({ id: byName[name].id, name }), { status: 200 }) : new Response(null, { status: 204 });
+    }
+    if (u.includes('api.minecraftservices.com')) {
+      const who = byToken[(opts.headers || {}).Authorization?.replace('Bearer ', '')];
+      return who ? new Response(JSON.stringify(who)) : new Response(null, { status: 401 });
+    }
+    if (u.includes('api.mojang.com/users/profiles/minecraft/')) {
+      const name = decodeURIComponent(u.split('/').pop());
+      return byName[name] ? new Response(JSON.stringify({ id: byName[name].id, name }), { status: 200 }) : new Response(null, { status: 404 });
+    }
+    return new Response(null, { status: 204 });
+  };
+  try {
+    const post = async (p, body) => { const r = await handle(new Request(`https://capes.test${p}`, { method: 'POST', body: JSON.stringify(body) }), env); return { status: r.status, body: await r.json() }; };
+    // Every social call proves the player with a fresh challenge, like /select does.
+    const as = async (who, action, extra = {}) => {
+      const { serverId } = (await post('/auth/challenge', {})).body;
+      return post(`/social/${action}`, { name: who.name, serverId, accessToken: tokens[who.name.toLowerCase()], ...extra });
+    };
+
+    const sent = await as(ALICE, 'request', { target: 'Bob' });
+    assert.strictEqual(sent.status, 200);
+
+    const pending = await as(BOB, 'state');
+    assert.strictEqual(pending.body.requests.length, 1);
+    assert.strictEqual(pending.body.requests[0].from.uuid, ALICE.id);
+
+    // A non-friend cannot message even after the request is pending.
+    const early = await as(ALICE, 'send', { friend: BOB.id, text: 'hi' });
+    assert.strictEqual(early.status, 403);
+
+    assert.strictEqual((await as(BOB, 'accept', { from: ALICE.id })).status, 200);
+
+    const sendOk = await as(ALICE, 'send', { friend: BOB.id, text: 'hello Bob' });
+    assert.strictEqual(sendOk.status, 200);
+    const read = await as(BOB, 'messages', { friend: ALICE.id });
+    assert.strictEqual(read.body.messages.length, 1);
+    assert.strictEqual(read.body.messages[0].text, 'hello Bob');
+
+    // Carol is not Bob's friend: she cannot read or write their conversation.
+    assert.strictEqual((await as(CAROL, 'messages', { friend: BOB.id })).status, 403);
+    assert.strictEqual((await as(CAROL, 'send', { friend: BOB.id, text: 'psst' })).status, 403);
+
+    const longText = await as(ALICE, 'send', { friend: BOB.id, text: 'x'.repeat(501) });
+    assert.strictEqual(longText.status, 400);
+
+    const bobList = await as(BOB, 'state');
+    assert.strictEqual(bobList.body.friends[0].name, 'Alice');
+    assert.strictEqual(bobList.body.friends[0].online, false);
+
+    assert.strictEqual((await as(BOB, 'remove', { friend: ALICE.id })).status, 200);
+    assert.strictEqual((await as(ALICE, 'send', { friend: BOB.id, text: 'still there?' })).status, 403);
+    assert.strictEqual((await as(ALICE, 'request', { target: 'Nobody' })).status, 404);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test('cape Worker counts installs and online launchers', async () => {
   const { handle } = await import('../../cape-server/worker/src/index.js');
   const env = workerEnv(kvStore());

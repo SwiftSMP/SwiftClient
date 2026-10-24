@@ -55,6 +55,11 @@ public final class Platform {
 		return new OptionsScreen(parent, Minecraft.getInstance().options);
 	}
 
+	public static void joinServer(Screen parent, String name, String address) {
+		ConnectScreen.startConnecting(parent, Minecraft.getInstance(), ServerAddress.parseString(address),
+			new ServerData(name, address, ServerData.Type.OTHER), false, null);
+	}
+
 	public static void joinServer(Screen parent) {
 		String address = System.getProperty("swiftclient.server.address", "swiftsmp.net");
 		String name = System.getProperty("swiftclient.server.name", "SwiftSMP");

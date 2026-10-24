@@ -310,3 +310,28 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
   .view, .pulse.on, .pulse.alt.on, .status-card.busy .pulse { animation: none; }
   .status-card { transition: none; }
 }
+
+/* friends and chat */
+.friends-grid { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 14px; margin-top: 14px; }
+.friend-list { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.friend-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); color: var(--text); cursor: pointer;
+}
+.friend-row:hover, .friend-row.active { border-color: var(--accent); }
+.friend-row.request { cursor: default; flex-wrap: wrap; }
+.friend-row .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-row small { color: var(--faint); }
+.friend-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.friend-row .dot.on { background: #4ade80; }
+.chat { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.chat[hidden] { display: none; }
+.chat-log {
+  height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+}
+.msg { display: flex; flex-direction: column; max-width: 80%; }
+.msg b { color: var(--muted); font-size: 12px; }
+.msg span { background: var(--surface-2, var(--surface)); border-radius: 10px; padding: 6px 10px; word-break: break-word; }
+.msg.mine { align-self: flex-end; align-items: flex-end; }
+.msg.mine span { background: var(--accent-deep); }

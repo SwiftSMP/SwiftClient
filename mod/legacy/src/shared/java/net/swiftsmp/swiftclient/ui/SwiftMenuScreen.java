@@ -143,7 +143,8 @@ public final class SwiftMenuScreen extends SwiftScreen {
 
 		int cx = px + sw + 12, cy = py + 10, cw = pw - sw - 22;
 		drawHeader(g, cx, cy, cw);
-		int bodyY = cy + 30;
+		drawTopBar(g, cx, cy + 22, cw);
+		int bodyY = cy + 46;
 		int bodyH = py + ph - 8 - bodyY;
 		body = new int[] {cx - 4, bodyY - 4, cw + 8, bodyH + 4};
 		viewHeight = bodyH;
@@ -170,6 +171,23 @@ public final class SwiftMenuScreen extends SwiftScreen {
 		// fade the tab body in when switching
 		if (tabFade < 0.98f) g.fill(cx - 4, bodyY - 4, cx + cw + 4, bodyY + bodyH, Theme.alpha(Theme.BG, (1f - tabFade) * 0.85f));
 		g.popMatrix();
+	}
+
+	/** Lunar-style row of tab pills under the header; the sidebar stays for the same tabs. */
+	private void drawTopBar(Gfx g, int x, int y, int w) {
+		int pillW = Math.min(64, (w - 8) / Tab.values().length - 4);
+		int right = x + w;
+		for (int i = Tab.values().length - 1; i >= 0; i--) {
+			Tab t = Tab.values()[i];
+			int px0 = right - pillW;
+			boolean active = tab == t;
+			float hv = hover("top" + t, px0, y, pillW, 16);
+			Theme.glass(g, px0, y, pillW, 16, 8, active ? Theme.alpha(Theme.ACCENT, 0.55f) : Theme.mix(Theme.GLASS, Theme.alpha(Theme.ACCENT, 0.35f), hv));
+			String label = t.label;
+			g.text(font, label, px0 + (pillW - font.width(label)) / 2, y + 4, active ? Theme.TEXT : Theme.mix(Theme.MUTED, Theme.TEXT, hv), false);
+			clickable(px0, y, pillW, 16, () -> select(t));
+			right = px0 - 4;
+		}
 	}
 
 	private void drawHeader(Gfx g, int x, int y, int w) {

@@ -22,8 +22,51 @@ public final class Compat {
 	private static boolean isKeyDownResolved;
 	private static Constructor<?> optionsConstructor;
 	private static boolean optionsResolved;
+	private static Method screenGetter;
+	private static Method screenSetter;
+	private static boolean screenResolved;
 
 	private Compat() {}
+
+	/**
+	 * The current screen. 26.2+ exposes {@code gui.screen()}; 26.1 has {@code Minecraft.screen}
+	 * as a field, so this reads whichever is there.
+	 */
+	public static Screen screen() {
+		Minecraft mc = Minecraft.getInstance();
+		resolveScreen();
+		try {
+			if (screenGetter != null) return (Screen) screenGetter.invoke(mc.gui);
+			return (Screen) Minecraft.class.getField("screen").get(mc);
+		} catch (ReflectiveOperationException e) {
+			return null;
+		}
+	}
+
+	/** Opens a screen, through {@code gui.setScreen} on 26.2+ or {@code Minecraft.setScreen} on 26.1. */
+	public static void setScreen(Screen screen) {
+		Minecraft mc = Minecraft.getInstance();
+		resolveScreen();
+		try {
+			if (screenSetter != null) screenSetter.invoke(mc.gui, screen);
+			else Minecraft.class.getMethod("setScreen", Screen.class).invoke(mc, screen);
+		} catch (ReflectiveOperationException e) {
+			SwiftClientMod.LOG.warn("Could not open {}: {}", screen, e.toString());
+		}
+	}
+
+	private static void resolveScreen() {
+		if (screenResolved) return;
+		screenResolved = true;
+		try {
+			screenGetter = net.minecraft.client.gui.Gui.class.getMethod("screen");
+			screenSetter = net.minecraft.client.gui.Gui.class.getMethod("setScreen", Screen.class);
+		} catch (NoSuchMethodException older) {
+			// 26.1: the screen lives on Minecraft itself, so the helpers use those.
+			screenGetter = null;
+			screenSetter = null;
+		}
+	}
 
 	/** InputConstants.isKeyDown(key), for a 26.2+ window or the older plain form. */
 	public static boolean isKeyDown(int keyCode) {

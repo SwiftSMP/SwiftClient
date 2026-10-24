@@ -1,5 +1,6 @@
 package net.swiftsmp.swiftclient;
 
+import net.swiftsmp.swiftclient.Compat;
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
@@ -38,6 +39,10 @@ public final class SwiftClientMod implements ClientModInitializer {
 		CapeManager.init(capeApi);
 		LOG.info("SwiftClient {} loaded (capes: {})", version(), capeApi.isEmpty() ? "off" : capeApi);
 
+		// Tell the server which client this is, so SwiftCore can give the SwiftClient badge.
+		net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry.serverboundPlay().register(net.swiftsmp.swiftclient.net.HelloPayload.TYPE, net.swiftsmp.swiftclient.net.HelloPayload.CODEC);
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(new net.swiftsmp.swiftclient.net.HelloPayload(capeApi.isEmpty() ? "mod" : "launcher")));
+
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "swiftclient"));
 		menuKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.swiftclient.menu", InputConstants.KEY_RSHIFT, category));
 		zoomKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.swiftclient.zoom", InputConstants.KEY_C, category));
@@ -59,7 +64,7 @@ public final class SwiftClientMod implements ClientModInitializer {
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (menuKey.consumeClick()) {
-				if (client.gui.screen() == null) client.gui.setScreen(new SwiftMenuScreen());
+				if (Compat.screen() == null) Compat.setScreen(new SwiftMenuScreen());
 			}
 			while (hudKey.consumeClick()) {
 				SwiftConfig.get().hudVisible = !SwiftConfig.get().hudVisible;
@@ -95,9 +100,9 @@ public final class SwiftClientMod implements ClientModInitializer {
 		if (debug.isEmpty() || debugTicks < 0 || client.player == null) return;
 		debugTicks++;
 		if (debugTicks == 40 && debug.contains("cape")) client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-		if (debugTicks == 200 && debug.contains("menu")) client.gui.setScreen(new SwiftMenuScreen());
-		if (debugTicks == 300 && debug.contains("menu")) client.gui.setScreen(new SwiftMenuScreen("visibility"));
-		if (debugTicks == 400 && debug.contains("editor")) client.gui.setScreen(new net.swiftsmp.swiftclient.ui.HudEditorScreen(null));
+		if (debugTicks == 200 && debug.contains("menu")) Compat.setScreen(new SwiftMenuScreen());
+		if (debugTicks == 300 && debug.contains("menu")) Compat.setScreen(new SwiftMenuScreen("visibility"));
+		if (debugTicks == 400 && debug.contains("editor")) Compat.setScreen(new net.swiftsmp.swiftclient.ui.HudEditorScreen(null));
 	}
 
 	public static KeyMapping zoomKey() {

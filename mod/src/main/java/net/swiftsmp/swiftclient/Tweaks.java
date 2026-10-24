@@ -1,5 +1,6 @@
 package net.swiftsmp.swiftclient;
 
+import net.swiftsmp.swiftclient.Compat;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
@@ -17,7 +18,7 @@ public final class Tweaks {
 		Options o = mc.options;
 
 		// Auto sprint: hold the sprint key for the player while they walk forward.
-		boolean forward = mc.player != null && mc.gui.screen() == null && o.keyUp.isDown();
+		boolean forward = mc.player != null && Compat.screen() == null && o.keyUp.isDown();
 		if (c.autoSprint && forward) {
 			o.keySprint.setDown(true);
 			sprintHeldByUs = true;
@@ -27,7 +28,7 @@ public final class Tweaks {
 		}
 
 		// Zoom eases in and out.
-		boolean zooming = c.smoothZoom && mc.gui.screen() == null && SwiftClientMod.zoomKey().isDown();
+		boolean zooming = c.smoothZoom && Compat.screen() == null && SwiftClientMod.zoomKey().isDown();
 		float target = zooming ? c.zoomFactor : 1f;
 		zoom += (target - zoom) * 0.5f;
 		if (Math.abs(zoom - target) < 0.01f) zoom = target;

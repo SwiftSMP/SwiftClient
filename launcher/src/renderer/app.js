@@ -35,6 +35,7 @@ function show(view) {
   $$('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
   if (view === 'mods') renderMods();
   if (view === 'cosmetics') { renderCapes(); renderAdminCodes(); }
+  if (view === 'friends') { renderFriends(); startFriendsPolling(); }
 }
 $$('.nav').forEach((n) => n.addEventListener('click', () => show(n.dataset.view)));
 
@@ -222,7 +223,7 @@ function setServerStatus(server) {
   card.title = server.motd ? `${server.motd}\n${server.latencyMs} ms` : `${server.latencyMs} ms`;
 }
 
-function setClientStatus(client) {
+function setClientStatus(client, downloads) {
   const card = $('#clientCard');
   card.classList.remove('off', 'busy');
   if (!client) {
@@ -234,13 +235,14 @@ function setClientStatus(client) {
   $('#clientLabel').textContent = client.users
     ? `SwiftClient online · ${num(client.users)} installs`
     : 'SwiftClient players online';
+  $('#clientDownloads').textContent = downloads == null ? '' : `${num(downloads)} total downloads`;
 }
 
 async function refreshStatus() {
   try {
     const s = await swift.call('stats:get');
     setServerStatus(s.server);
-    setClientStatus(s.client);
+    setClientStatus(s.client, s.downloads);
   } catch { /* offline: keep the last counts */ }
 }
 
@@ -497,6 +499,119 @@ function bindSettings(curated, totalMemMb) {
     label.querySelector('input').addEventListener('change', (e) => save({ optionalMods: { ...state.settings.optionalMods, [m.slug]: e.target.checked } }));
     return label;
   }));
+}
+
+// ---- friends and chat ------------------------------------------------------------
+
+let openFriend = null;   // uuid of the friend whose chat is open
+let friendsTimer = null; // refreshes the list and open chat while the view is visible
+
+async function renderFriends() {
+  const list = $('#friendList');
+  if (!state.account) {
+    list.replaceChildren(el('div', { className: 'empty', textContent: 'Sign in to add friends and chat.' }));
+    return;
+  }
+  let data;
+  try {
+    data = await swift.call('social:state');
+  } catch (e) {
+    list.replaceChildren(el('div', { className: 'empty', textContent: e.message }));
+    return;
+  }
+  const rows = [];
+  for (const r of data.requests) {
+    rows.push(el('div', { className: 'friend-row request' },
+      el('span', { className: 'grow', textContent: `${r.from.name} wants to be friends` }),
+      el('button', { className: 'btn small', textContent: 'Accept', onclick: () => friendAction('social:accept', r.from.uuid) }),
+      el('button', { className: 'btn ghost small', textContent: 'Decline', onclick: () => friendAction('social:decline', r.from.uuid) })));
+  }
+  for (const f of data.friends) {
+    const row = el('button', { className: `friend-row${openFriend === f.uuid ? ' active' : ''}` },
+      el('span', { className: `dot${f.online ? ' on' : ''}` }),
+      el('span', { className: 'grow', textContent: f.name }),
+      el('small', { textContent: f.online ? 'online' : 'offline' }));
+    row.addEventListener('click', () => openChat(f));
+    rows.push(row);
+  }
+  if (!rows.length) rows.push(el('div', { className: 'empty', textContent: 'No friends yet. Add someone by their Minecraft name.' }));
+  list.replaceChildren(...rows);
+}
+
+async function friendAction(channel, arg) {
+  try {
+    await swift.call(channel, arg);
+    renderFriends();
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+async function openChat(friend) {
+  openFriend = friend.uuid;
+  $('#chatPane').hidden = false;
+  $('#chatPane').dataset.name = friend.name;
+  renderChat();
+  renderFriends();
+}
+
+async function renderChat() {
+  if (!openFriend) return;
+  const log = $('#chatLog');
+  const name = $('#chatPane').dataset.name || '';
+  let messages;
+  try {
+    ({ messages } = await swift.call('social:messages', openFriend));
+  } catch (e) {
+    log.replaceChildren(el('div', { className: 'empty', textContent: e.message }));
+    return;
+  }
+  const me = state.account && state.account.uuid;
+  log.replaceChildren(...(messages.length
+    ? messages.map((m) => el('div', { className: `msg${m.from === me ? ' mine' : ''}` },
+        el('b', { textContent: m.from === me ? 'You' : name }),
+        el('span', { textContent: m.text })))
+    : [el('div', { className: 'empty', textContent: `Say hi to ${name}.` })]));
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendChat() {
+  const input = $('#chatInput');
+  const text = input.value.trim();
+  if (!text || !openFriend) return;
+  try {
+    await swift.call('social:send', openFriend, text);
+    input.value = '';
+    renderChat();
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+$('#friendAdd').addEventListener('click', async () => {
+  const input = $('#friendName');
+  const name = input.value.trim();
+  if (!name) return;
+  try {
+    await swift.call('social:request', name);
+    input.value = '';
+    toast(`Friend request sent to ${name}.`);
+    renderFriends();
+  } catch (e) {
+    toast(e.message, true);
+  }
+});
+$('#chatSend').addEventListener('click', sendChat);
+$('#chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+
+// Keep the list and the open chat fresh while the Friends view is on screen.
+function startFriendsPolling() {
+  if (friendsTimer) return;
+  friendsTimer = setInterval(() => {
+    if (!$('#view-friends').classList.contains('active')) return;
+    renderFriends();
+    if (openFriend) renderChat();
+  }, 5000);
 }
 
 // ---- boot ------------------------------------------------------------------------

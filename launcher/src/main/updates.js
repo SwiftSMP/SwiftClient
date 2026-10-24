@@ -42,4 +42,20 @@ async function installerUrl(release, name = 'SwiftClient-Setup.exe') {
   return asset ? asset.url : release.url || null;
 }
 
-module.exports = { parseTag, isNewer, latestRelease, installerUrl, REPO };
+/** Sum of GitHub download counts across every release asset (all pages). */
+async function totalDownloads({ owner = REPO.owner, repo = REPO.repo, fetchImpl = fetch, timeoutMs = 8000 } = {}) {
+  let total = 0;
+  for (let page = 1; page <= 20; page++) {
+    const res = await fetchImpl(`${API}/repos/${owner}/${repo}/releases?per_page=100&page=${page}`, {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'SwiftClient-Launcher' },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`GitHub releases lookup failed (HTTP ${res.status}).`);
+    const releases = await res.json();
+    for (const r of releases) for (const a of r.assets || []) total += Number(a.download_count) || 0;
+    if (releases.length < 100) break;
+  }
+  return total;
+}
+
+module.exports = { parseTag, isNewer, latestRelease, installerUrl, totalDownloads, REPO };

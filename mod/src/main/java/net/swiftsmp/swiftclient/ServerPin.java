@@ -1,44 +1,66 @@
 package net.swiftsmp.swiftclient;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
 
 /**
- * Keeps SwiftSMP as the first entry of the Multiplayer server list: added if missing,
- * moved back to the top if the player reordered it. The launcher passes the address
- * (-Dswiftclient.server.address / .name); the defaults match swiftclient.config.json.
+ * Keeps the launcher's pinned servers at the top of the Multiplayer server list, in the
+ * order the launcher gives them (SwiftSMP first, then partners such as ValenMC). A pinned
+ * server that is missing is added back, so it cannot be deleted, like Lunar's pinned servers.
+ * The launcher passes them as -Dswiftclient.servers="name|address|partner|pinned;...".
  */
 public final class ServerPin {
 	private ServerPin() {}
 
-	static void pin(Minecraft mc) {
-		String address = System.getProperty("swiftclient.server.address", "swiftsmp.net");
-		String name = System.getProperty("swiftclient.server.name", "SwiftSMP");
-		if (address.isBlank()) return;
+	/** One pinned entry parsed from the launcher's property. */
+	public record Pinned(String name, String address, boolean partner) {}
+
+	public static List<Pinned> pinnedServers() {
+		List<Pinned> out = new ArrayList<>();
+		String raw = System.getProperty("swiftclient.servers", "");
+		if (raw.isBlank()) {
+			// Older launchers only pass the featured server.
+			out.add(new Pinned(System.getProperty("swiftclient.server.name", "SwiftSMP"),
+				System.getProperty("swiftclient.server.address", "swiftsmp.net"), false));
+			return out;
+		}
+		for (String entry : raw.split(";")) {
+			String[] f = entry.split("\\|");
+			if (f.length < 4 || f[1].isBlank() || !"1".equals(f[3])) continue;
+			out.add(new Pinned(f[0], f[1], "1".equals(f[2])));
+		}
+		return out;
+	}
+
+	public static void pin(Minecraft mc) {
+		List<Pinned> pinned = pinnedServers();
+		if (pinned.isEmpty()) return;
 		try {
 			ServerList list = new ServerList(mc);
 			list.load();
-			int index = -1;
-			for (int i = 0; i < list.size(); i++) {
-				if (sameServer(list.get(i).ip, address)) { index = i; break; }
+			// Walk backwards so each pinned server ends up at the top, in launcher order.
+			for (int p = pinned.size() - 1; p >= 0; p--) {
+				Pinned want = pinned.get(p);
+				int index = -1;
+				for (int i = 0; i < list.size(); i++) {
+					if (sameServer(list.get(i).ip, want.address())) { index = i; break; }
+				}
+				if (index < 0) {
+					list.add(new ServerData(want.name(), want.address(), ServerData.Type.OTHER), false);
+					index = list.size() - 1;
+				} else if (!list.get(index).ip.equalsIgnoreCase(want.address())) {
+					// e.g. an old play.swiftsmp.net entry: point it at the current address
+					list.get(index).ip = want.address();
+				}
+				for (int i = index; i > p; i--) list.swap(i, i - 1);
 			}
-			if (index >= 0 && !list.get(index).ip.equalsIgnoreCase(address)) {
-				// e.g. an old play.swiftsmp.net entry: point it at the current address
-				list.get(index).ip = address;
-				list.save();
-			}
-			if (index == 0) return;
-			if (index < 0) {
-				list.add(new ServerData(name, address, ServerData.Type.OTHER), false);
-				index = list.size() - 1;
-			}
-			// Bubble it to the top so the other servers keep their order.
-			for (int i = index; i > 0; i--) list.swap(i, i - 1);
 			list.save();
 		} catch (Exception e) {
-			SwiftClientMod.LOG.warn("Could not pin {} in the server list: {}", address, e.toString());
+			SwiftClientMod.LOG.warn("Could not pin servers in the server list: {}", e.toString());
 		}
 	}
 

@@ -40,6 +40,7 @@
       <button class="nav active" data-view="play"><span class="ico">&#9654;</span>Play</button>
       <button class="nav" data-view="mods"><span class="ico">&#9638;</span>Mods</button>
       <button class="nav" data-view="cosmetics"><span class="ico">&#9873;</span>Cosmetics</button>
+      <button class="nav" data-view="friends"><span class="ico">&#9787;</span>Friends</button>
       <button class="nav" data-view="settings"><span class="ico">&#9881;</span>Settings</button>
       <div class="spacer"></div>
     </nav>
@@ -63,7 +64,7 @@
             </div>
             <div class="status-card" id="clientCard">
               <span class="pulse alt" id="clientDot"></span>
-              <div class="status-text"><b id="clientOnline">&mdash;</b><small id="clientLabel">SwiftClient players online</small></div>
+              <div class="status-text"><b id="clientOnline">&mdash;</b><small id="clientLabel">SwiftClient players online</small><small id="clientDownloads"></small></div>
             </div>
           </div>
           <div class="progress hidden" id="progress">
@@ -120,6 +121,27 @@
           </div>
           <textarea id="adminOut" readonly spellcheck="false" placeholder="New codes appear here once. Copy them before you leave." hidden></textarea>
           <div class="admin-list" id="adminList"></div>
+        </div>
+      </section>
+
+      <!-- FRIENDS -->
+      <section class="view" id="view-friends">
+        <div class="view-head">
+          <div><h2>Friends</h2><p class="muted">Add players by Minecraft name and message them here.</p></div>
+        </div>
+        <div class="row">
+          <input type="text" id="friendName" placeholder="Minecraft name" maxlength="16" spellcheck="false" autocomplete="off">
+          <button class="btn ghost" id="friendAdd">Add friend</button>
+        </div>
+        <div class="friends-grid">
+          <div class="friend-list" id="friendList"></div>
+          <div class="chat" id="chatPane" hidden>
+            <div class="chat-log" id="chatLog"></div>
+            <div class="row">
+              <input type="text" id="chatInput" maxlength="500" placeholder="Message" autocomplete="off">
+              <button class="btn" id="chatSend">Send</button>
+            </div>
+          </div>
         </div>
       </section>
 

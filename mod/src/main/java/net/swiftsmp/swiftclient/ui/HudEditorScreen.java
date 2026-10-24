@@ -1,5 +1,6 @@
 package net.swiftsmp.swiftclient.ui;
 
+import net.swiftsmp.swiftclient.Compat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -32,7 +33,7 @@ public final class HudEditorScreen extends SwiftScreen {
 	@Override
 	public void onClose() {
 		SwiftConfig.save();
-		Minecraft.getInstance().gui.setScreen(parent);
+		Compat.setScreen(parent);
 	}
 
 	@Override

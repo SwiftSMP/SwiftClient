@@ -184,10 +184,20 @@ function publicAccount(a) {
 class Auth {
   constructor(clientId) {
     this.clientId = clientId;
-    this.account = readAccount();
+    // Read lazily: safeStorage is only usable once Electron's app is ready.
+    this.loaded = false;
+    this.account = null;
   }
 
-  current() { return publicAccount(this.account); }
+  load() {
+    if (!this.loaded) {
+      this.account = readAccount();
+      this.loaded = true;
+    }
+    return this.account;
+  }
+
+  current() { return publicAccount(this.load()); }
 
   async login(parent) {
     if (!this.clientId) {
@@ -203,7 +213,7 @@ class Auth {
 
   /** Returns a fresh Minecraft session ({accessToken, uuid, name, xuid}), refreshing if needed. */
   async session() {
-    if (!this.account) throw new Error('Not signed in.');
+    if (!this.load()) throw new Error('Not signed in.');
     if (this.account.mc.expiresAt > Date.now()) return this.account.mc;
     let ms;
     try {

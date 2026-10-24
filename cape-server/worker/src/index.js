@@ -161,6 +161,134 @@ async function heartbeat(env, { id, version }) {
   };
 }
 
+// ---- friends and direct messages --------------------------------------------
+// KV keys: "friends:<uuid>" = {"<friendUuid>": {name}} (accepted friends),
+// "requests:<uuid>" = [{from:{uuid,name}, at}] incoming requests,
+// "dm:<a>:<b>" = [{from, text, at}] messages between two players (sorted uuids, 30-day TTL),
+// "presence" lives in the existing "on:<uuid>" heartbeat keys.
+
+const MESSAGE_TTL = 30 * 24 * 60 * 60;
+const MAX_MESSAGES = 200;
+const MAX_TEXT = 500;
+
+const dmKey = (a, b) => `dm:${[a, b].sort().join(':')}`;
+
+/** Verifies a launcher social request the same way /select does, then returns the player. */
+async function socialPlayer(env, body) {
+  const { name, serverId, accessToken } = body;
+  if (!/^[0-9a-f]{32}$/.test(serverId || '') || !(await env.CAPES.get(`ch:${serverId}`))) {
+    return { error: send(400, { error: 'unknown or expired challenge' }) };
+  }
+  if (!/^[A-Za-z0-9_]{1,16}$/.test(name || '')) return { error: send(400, { error: 'bad name' }) };
+  const verified = await verifyPlayer(env, { name, serverId, accessToken });
+  if (verified.failed) return { error: send(403, { error: 'Mojang could not verify this session', verify: 'failed', reason: verified.failed }) };
+  await env.CAPES.delete(`ch:${serverId}`);
+  return { player: verified };
+}
+
+async function friendsState(env, uuid) {
+  const [friends, requests] = await Promise.all([
+    env.CAPES.get(`friends:${uuid}`, 'json'),
+    env.CAPES.get(`requests:${uuid}`, 'json'),
+  ]);
+  const online = await Promise.all(Object.keys(friends || {}).map((f) => env.CAPES.get(`on:${f}`)));
+  return {
+    friends: Object.entries(friends || {}).map(([id, v], i) => ({ uuid: id, name: v.name, online: !!online[i] })),
+    requests: requests || [],
+  };
+}
+
+/** Friend requests go to a Minecraft name; the Worker resolves it through Mojang's profile API. */
+async function lookupName(name) {
+  try {
+    const r = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(name)}`, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+    });
+    if (r.status !== 200) return null;
+    const profile = await r.json();
+    return isUuid(normUuid(profile.id)) ? { uuid: normUuid(profile.id), name: String(profile.name || name) } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function social(env, action, body) {
+  const { player, error } = await socialPlayer(env, body);
+  if (error) return error;
+  const me = player.uuid;
+
+  if (action === 'state') return send(200, await friendsState(env, me));
+
+  if (action === 'request') {
+    const target = await lookupName(String(body.target || ''));
+    if (!target) return send(404, { error: 'No Minecraft player has that name.' });
+    if (target.uuid === me) return send(400, { error: 'You cannot add yourself.' });
+    const friends = (await env.CAPES.get(`friends:${me}`, 'json')) || {};
+    if (friends[target.uuid]) return send(409, { error: `${target.name} is already your friend.` });
+    const pending = (await env.CAPES.get(`requests:${target.uuid}`, 'json')) || [];
+    if (pending.some((r) => r.from.uuid === me)) return send(409, { error: 'Request already sent.' });
+    pending.push({ from: { uuid: me, name: player.name }, at: new Date().toISOString() });
+    await env.CAPES.put(`requests:${target.uuid}`, JSON.stringify(pending.slice(-50)));
+    return send(200, await friendsState(env, me));
+  }
+
+  if (action === 'accept' || action === 'decline') {
+    const from = String(body.from || '');
+    if (!isUuid(from)) return send(400, { error: 'bad player' });
+    const pending = (await env.CAPES.get(`requests:${me}`, 'json')) || [];
+    const req = pending.find((r) => r.from.uuid === from);
+    if (!req) return send(404, { error: 'No request from that player.' });
+    await env.CAPES.put(`requests:${me}`, JSON.stringify(pending.filter((r) => r !== req)));
+    if (action === 'accept') {
+      const mine = (await env.CAPES.get(`friends:${me}`, 'json')) || {};
+      const theirs = (await env.CAPES.get(`friends:${from}`, 'json')) || {};
+      mine[from] = { name: req.from.name };
+      theirs[me] = { name: player.name };
+      await env.CAPES.put(`friends:${me}`, JSON.stringify(mine));
+      await env.CAPES.put(`friends:${from}`, JSON.stringify(theirs));
+    }
+    return send(200, await friendsState(env, me));
+  }
+
+  if (action === 'remove') {
+    const other = String(body.friend || '');
+    if (!isUuid(other)) return send(400, { error: 'bad player' });
+    const mine = (await env.CAPES.get(`friends:${me}`, 'json')) || {};
+    const theirs = (await env.CAPES.get(`friends:${other}`, 'json')) || {};
+    delete mine[other];
+    delete theirs[me];
+    await env.CAPES.put(`friends:${me}`, JSON.stringify(mine));
+    await env.CAPES.put(`friends:${other}`, JSON.stringify(theirs));
+    return send(200, await friendsState(env, me));
+  }
+
+  if (action === 'messages') {
+    const other = String(body.friend || '');
+    if (!isUuid(other)) return send(400, { error: 'bad player' });
+    const friends = (await env.CAPES.get(`friends:${me}`, 'json')) || {};
+    if (!friends[other]) return send(403, { error: 'You can only message friends.' });
+    const messages = (await env.CAPES.get(dmKey(me, other), 'json')) || [];
+    return send(200, { messages });
+  }
+
+  if (action === 'send') {
+    const other = String(body.friend || '');
+    if (!isUuid(other)) return send(400, { error: 'bad player' });
+    const text = String(body.text || '').trim();
+    if (!text) return send(400, { error: 'Type a message first.' });
+    if (text.length > MAX_TEXT) return send(400, { error: `Messages can be ${MAX_TEXT} characters at most.` });
+    const friends = (await env.CAPES.get(`friends:${me}`, 'json')) || {};
+    if (!friends[other]) return send(403, { error: 'You can only message friends.' });
+    const key = dmKey(me, other);
+    const messages = (await env.CAPES.get(key, 'json')) || [];
+    messages.push({ from: me, text, at: new Date().toISOString() });
+    await env.CAPES.put(key, JSON.stringify(messages.slice(-MAX_MESSAGES)), { expirationTtl: MESSAGE_TTL });
+    return send(200, { messages: messages.slice(-MAX_MESSAGES) });
+  }
+
+  return send(404, { error: 'not found' });
+}
+
 // ---- routing ----------------------------------------------------------------
 
 export async function handle(request, env) {
@@ -207,6 +335,11 @@ export async function handle(request, env) {
       try { body = await readBody(request); } catch (e) { return send(400, { error: e.message }); }
       const result = await heartbeat(env, body);
       return result ? send(200, result) : send(400, { error: 'bad install id' });
+    }
+    if (p.startsWith('/social/')) {
+      let body;
+      try { body = await readBody(request); } catch (e) { return send(400, { error: e.message }); }
+      return social(env, p.slice('/social/'.length), body);
     }
     if (p === '/redeem') {
       let body;

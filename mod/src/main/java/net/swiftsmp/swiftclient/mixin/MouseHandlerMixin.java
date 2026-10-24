@@ -1,5 +1,6 @@
 package net.swiftsmp.swiftclient.mixin;
 
+import net.swiftsmp.swiftclient.Compat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -14,6 +15,6 @@ public abstract class MouseHandlerMixin {
 	/** Counts in-game mouse presses for the CPS and keystrokes modules. */
 	@Inject(method = "onButton", at = @At("HEAD"))
 	private void swiftclient$cps(long window, MouseButtonInfo info, int action, CallbackInfo ci) {
-		if (action == 1 && Minecraft.getInstance().gui.screen() == null) Modules.CpsTracker.click(info.button());
+		if (action == 1 && Compat.screen() == null) Modules.CpsTracker.click(info.button());
 	}
 }

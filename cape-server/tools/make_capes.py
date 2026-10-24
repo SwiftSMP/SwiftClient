@@ -13,6 +13,7 @@ OUT = os.path.join(HERE, "..", "capes")
 LOGO = os.path.join(HERE, "..", "..", "launcher", "src", "renderer", "img", "logo.png")
 
 NAVY, NAVY2, DEEP = (19, 24, 48), (30, 39, 80), (8, 10, 22)
+GREEN, GREEN_DEEP = (124, 205, 35), (38, 92, 18)
 ORANGE, ORANGE2, ODEEP = (252, 109, 0), (255, 154, 61), (179, 78, 0)
 GOLD, GOLD2 = (255, 200, 61), (255, 226, 140)
 WHITE = (236, 238, 246)
@@ -99,12 +100,22 @@ def founder():
     return img
 
 
+def valenmc():
+    img = base(NAVY, GREEN_DEEP)
+    border(img, GREEN_DEEP)
+    logo = Image.open(os.path.join(HERE, "valenmc-logo.png")).convert("RGBA").resize((8, 8), Image.NEAREST)
+    lp = logo.load()
+    face(img, lambda x, y: lp[x - 1, y - 3][:3] if 1 <= x <= 8 and 3 <= y <= 10 and lp[x - 1, y - 3][3] > 128 else None)
+    return img
+
+
 CAPES = [
     ("swift", "SwiftClient", "The classic SwiftClient cape", True, swift),
     ("ember", "Ember", "Hot off the forge", True, ember),
     ("midnight", "Midnight", "A quiet night on SwiftSMP", True, midnight),
     ("staff", "Staff", "SwiftSMP staff team", False, staff),
     ("founder", "Founder", "Here from day one", False, founder),
+    ("valenmc", "ValenMC", "Partner server cape", True, valenmc),
 ]
 
 if __name__ == "__main__":
