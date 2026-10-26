@@ -286,7 +286,8 @@ async function announceManualUpdate() {
 }
 
 function setupUpdater() {
-  if (!app.isPackaged) return;
+  // The Microsoft Store updates Store installs itself; GitHub installers must not replace them.
+  if (!app.isPackaged || process.windowsStore) return;
   let autoUpdater = null;
   try { ({ autoUpdater } = require('electron-updater')); } catch { /* fall through to the manual path */ }
   ipcMain.handle('update:install', () => { if (autoUpdater) autoUpdater.quitAndInstall(); });

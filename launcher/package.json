@@ -11,7 +11,8 @@
     "start": "electron .",
     "test": "node --test test/*.test.js",
     "dist": "electron-builder --win nsis",
-    "release": "electron-builder --win nsis --publish always"
+    "release": "electron-builder --win nsis --publish always",
+    "dist:store": "python build/make_store_assets.py && electron-builder --win appx"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",
@@ -84,6 +85,24 @@
         "releaseType": "draft"
       }
     ],
-    "electronUpdaterCompatibility": ">=2.16"
+    "electronUpdaterCompatibility": ">=2.16",
+    "appx": {
+      "identityName": "REPLACE_WITH_PARTNER_CENTER_Package_Identity_Name",
+      "publisher": "CN=REPLACE_WITH_PARTNER_CENTER_Package_Identity_Publisher",
+      "publisherDisplayName": "REPLACE_WITH_PARTNER_CENTER_Publisher_display_name",
+      "applicationId": "SwiftClient",
+      "displayName": "SwiftClient",
+      "backgroundColor": "#0D1020",
+      "showNameOnTiles": true,
+      "languages": [
+        "en-US"
+      ],
+      "capabilities": [
+        "internetClient"
+      ],
+      "minVersion": "10.0.17763.0",
+      "maxVersionTested": "10.0.26100.0",
+      "artifactName": "SwiftClient-Store.${ext}"
+    }
   }
 }

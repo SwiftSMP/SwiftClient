@@ -80,6 +80,9 @@ Item components are only bound once a world loads, so the title screen cannot dr
 
 ## Building
 
+> Microsoft Store (MSIX) build: see [STORE.md](STORE.md). Run `npm run dist:store` in `launcher/`
+> after filling in the Partner Center identity values.
+
 Requirements: Node 20+ (tested with 24), JDK 25 (for the mod), internet access.
 
 ```bash

@@ -5,8 +5,50 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+/**
+ * Microsoft Store (MSIX) build: Windows silently redirects AppData writes of packaged apps
+ * into the package's own folder. Java then sees different paths for the jars than the
+ * launcher put on the classpath, and Fabric loads its classes twice and crashes. So the
+ * Store build keeps its data in the package's real LocalState folder, which is never
+ * redirected. The folder is named after the package family name, Name_PublisherId.
+ */
+function storeRoot() {
+  if (!process.windowsStore) return null;
+  const family = packageFamilyName();
+  const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  return family ? path.join(local, 'Packages', family, 'LocalState', '.swiftclient') : null;
+}
+
+/** Package family name from the app's AppxManifest.xml (works for Store and sideloaded installs). */
+function packageFamilyName() {
+  for (const dir of [path.dirname(process.execPath), path.join(path.dirname(process.execPath), '..')]) {
+    let xml;
+    try { xml = fs.readFileSync(path.join(dir, 'AppxManifest.xml'), 'utf8'); } catch { continue; }
+    const identity = /<Identity\b[^>]*>/.exec(xml);
+    if (!identity) return null;
+    const attr = (n) => (new RegExp(`\\b${n}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`).exec(identity[0]) || []).slice(1).find((v) => v != null);
+    const name = attr('Name');
+    const publisher = attr('Publisher');
+    return name && publisher ? `${name}_${publisherId(publisher)}` : null;
+  }
+  return null;
+}
+
+/** Windows' publisher ID: first 8 bytes of SHA-256(UTF-16LE publisher), base32 (Crockford alphabet), 13 chars. */
+function publisherId(publisher) {
+  const hash = require('crypto').createHash('sha256').update(Buffer.from(publisher, 'utf16le')).digest().subarray(0, 8);
+  const alphabet = '0123456789abcdefghjkmnpqrstvwxyz';
+  let bits = '';
+  for (const byte of hash) bits += byte.toString(2).padStart(8, '0');
+  bits += '0';
+  let out = '';
+  for (let i = 0; i < 65; i += 5) out += alphabet[parseInt(bits.slice(i, i + 5), 2)];
+  return out;
+}
+
 // SWIFTCLIENT_HOME overrides the data folder (portable installs, testing).
 const ROOT = process.env.SWIFTCLIENT_HOME
+  || storeRoot()
   || path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), '.swiftclient');
 
 const paths = {
