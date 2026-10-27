@@ -87,9 +87,9 @@
     ],
     "electronUpdaterCompatibility": ">=2.16",
     "appx": {
-      "identityName": "REPLACE_WITH_PARTNER_CENTER_Package_Identity_Name",
-      "publisher": "CN=REPLACE_WITH_PARTNER_CENTER_Package_Identity_Publisher",
-      "publisherDisplayName": "REPLACE_WITH_PARTNER_CENTER_Publisher_display_name",
+      "identityName": "SwiftSMP.SwiftClient",
+      "publisher": "CN=D970DDE9-CD29-4E28-9879-746A52C9EBEB",
+      "publisherDisplayName": "SwiftSMP",
       "applicationId": "SwiftClient",
       "displayName": "SwiftClient",
       "backgroundColor": "#0D1020",

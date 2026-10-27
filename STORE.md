@@ -119,7 +119,9 @@ launcher itself. Some reviewers may still refuse. The `.exe` download stays as t
 >
 > **Sign-in.** You sign in with your Microsoft account on Microsoft's own sign-in page. SwiftClient
 > never sees your password. It receives sign-in tokens from Microsoft, Xbox Live and Minecraft, and
-> stores them encrypted on your PC so you stay signed in. They are only sent to Microsoft and Mojang.
+> stores them encrypted on your PC so you stay signed in. They are used with Microsoft and Mojang. When
+> you choose a cape or use friends, SwiftClient's server may receive your Minecraft session only to
+> confirm with Mojang that the account is yours; it never stores it.
 >
 > **What we receive.** When you use SwiftClient's online features, our servers receive your Minecraft
 > username and UUID. This covers choosing a cape, showing capes of other SwiftClient players, friends

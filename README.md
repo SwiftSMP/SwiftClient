@@ -1,10 +1,10 @@
 # SwiftClient
 
-The SwiftSMP Minecraft client for Windows. It is a launcher in the spirit of Lunar Client: it
+The SwiftSMP Minecraft client for Windows. It
 installs Minecraft Java Edition through **Fabric** with a curated performance mod set, adds
 **SwiftClient capes** that every SwiftClient player can see, lets players **import their own
 mods**, shows **Discord Rich Presence** ("Playing on swiftsmp.net"), and updates itself.
-In game it has its own Lunar-style title screen, a Right Shift menu with movable HUD mods,
+In game it has its own title screen, a Right Shift menu with movable HUD mods,
 and SwiftSMP pinned at the top of the server list.
 
 Nothing from Mojang or the mod authors is bundled. Minecraft, the Java runtime and the
