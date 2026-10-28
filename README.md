@@ -179,10 +179,15 @@ discarded. A challenge is only spent when verification succeeds, so the launcher
 Stats are anonymous: a random install id, the version and a heartbeat; `/stats` returns
 `{users, online}`. Each heartbeat is a KV write, so presence uses a 25-minute TTL.
 
-## Android (PojavLauncher)
+## Android
 
-The launcher is Windows-only, but the mod runs on Android inside
-[PojavLauncher](https://pojavlauncherteam.github.io/), which runs Minecraft Java through Fabric.
+**SwiftClient for Android** is a full Java Edition launcher built on Amethyst (a PojavLauncher fork),
+source in [SwiftSMP/SwiftClient-Android](https://github.com/SwiftSMP/SwiftClient-Android). Picking a
+version and tapping **Play** sets up Fabric, the mod (from this repo's latest release), Fabric API and an
+Android-safe performance pack in one profile per version, and passes the cape server automatically. The APK is served from
+`https://swiftclient.swiftsmp.net/downloads/SwiftClient.apk` (see [website/README.md](website/README.md)).
+
+### Manual setup in PojavLauncher or another Android launcher
 
 1. Install the Minecraft version you want in PojavLauncher **with Fabric**.
 2. Download `swiftclient-<minecraft version>.jar` for that version from the

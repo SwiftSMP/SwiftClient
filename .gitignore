@@ -11,3 +11,4 @@ cape-server/data/
 *.log
 mod/dist/
 .wrangler/
+website/downloads/
