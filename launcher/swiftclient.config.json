@@ -13,13 +13,22 @@
       "name": "SwiftSMP",
       "address": "swiftsmp.net",
       "partner": false,
-      "pinned": true
+      "pinned": true,
+      "icon": "img/logo.png"
+    },
+    {
+      "name": "CyanRealms",
+      "address": "play.cyanrealms.com",
+      "partner": true,
+      "pinned": true,
+      "icon": "img/cyanrealms.png"
     },
     {
       "name": "ValenMC",
       "address": "play.valenmc.fun",
       "partner": true,
-      "pinned": true
+      "pinned": true,
+      "icon": "img/valenmc.png"
     }
   ]
 }

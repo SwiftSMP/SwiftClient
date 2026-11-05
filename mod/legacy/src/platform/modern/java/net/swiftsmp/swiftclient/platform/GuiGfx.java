@@ -28,6 +28,14 @@ public final class GuiGfx implements Gfx {
 
 	@Override public void logo(int x, int y, int size) { Ids.logo(g, x, y, size); }
 
+	@Override public void menuLogo(int x, int y, int size) { Ids.menuLogo(g, x, y, size); }
+
+	@Override public boolean uiIcon(String id, int x, int y, int size) { return Ids.uiIcon(g, id, x, y, size); }
+
+	@Override public void serverIcon(String key, int x, int y, int size) { Ids.serverIcon(g, key, x, y, size); }
+
+	@Override public void background(int x, int y, int w, int h) { Ids.background(g, x, y, w, h); }
+
 	@Override public int guiWidth() { return g.guiWidth(); }
 
 	@Override public int guiHeight() { return g.guiHeight(); }

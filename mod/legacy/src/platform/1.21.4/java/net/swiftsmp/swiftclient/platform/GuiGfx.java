@@ -12,6 +12,10 @@ import net.swiftsmp.swiftclient.ui.Gfx;
 /** 1.21 - 1.21.5 drawing surface: GuiGraphics with the old PoseStack matrices. */
 public final class GuiGfx implements Gfx {
 	private static final ResourceLocation LOGO = ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "icon.png");
+	private static final ResourceLocation BACKGROUND = ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "title/background.png");
+	private static final ResourceLocation CYANREALMS = ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "servers/cyanrealms.png");
+	private static final ResourceLocation VALENMC = ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "servers/valenmc.png");
+	private static final ResourceLocation MENU_LOGO = ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "icon_menu.png");
 
 	private final GuiGraphics g;
 
@@ -32,6 +36,22 @@ public final class GuiGfx implements Gfx {
 	@Override public void item(ItemStack stack, int x, int y) { g.renderItem(stack, x, y); }
 
 	@Override public void logo(int x, int y, int size) { g.blit(RenderType::guiTextured, LOGO, x, y, 0.0f, 0.0f, size, size, size, size); }
+
+	@Override public void serverIcon(String key, int x, int y, int size) {
+		ResourceLocation id = key.equals("cyanrealms") ? CYANREALMS : key.equals("valenmc") ? VALENMC : LOGO;
+		g.blit(RenderType::guiTextured, id, x, y, 0.0f, 0.0f, size, size, size, size);
+	}
+
+	@Override public void menuLogo(int x, int y, int size) { g.blit(RenderType::guiTextured, MENU_LOGO, x, y, 0.0f, 0.0f, size, size, size, size); }
+
+	@Override public boolean uiIcon(String id, int x, int y, int size) {
+		if (!UiIcons.known(id)) return false;
+		ResourceLocation icon = ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "ui/" + id + ".png");
+		g.blit(RenderType::guiTextured, icon, x, y, 0.0f, 0.0f, size, size, size, size);
+		return true;
+	}
+
+	@Override public void background(int x, int y, int w, int h) { g.blit(RenderType::guiTextured, BACKGROUND, x, y, 0.0f, 0.0f, w, h, w, h); }
 
 	@Override public int guiWidth() { return g.guiWidth(); }
 

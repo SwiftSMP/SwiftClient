@@ -43,16 +43,16 @@ const INCOMPATIBLE = {
 
 // ---- instance state ---------------------------------------------------------
 
-function modsDir(mc) { return path.join(paths.instance(mc), 'mods'); }
-function stateFile(mc) { return path.join(paths.instance(mc), 'swiftclient-mods.json'); }
+function modsDir(mc, loader = 'fabric') { return path.join(paths.instanceFor(mc, loader), 'mods'); }
+function stateFile(mc, loader = 'fabric') { return path.join(paths.instanceFor(mc, loader), 'swiftclient-mods.json'); }
 
-function readState(mc) {
-  try { return JSON.parse(fs.readFileSync(stateFile(mc), 'utf8')); } catch { return { managed: {} }; }
+function readState(mc, loader = 'fabric') {
+  try { return JSON.parse(fs.readFileSync(stateFile(mc, loader), 'utf8')); } catch { return { managed: {} }; }
 }
 
-function writeState(mc, state) {
-  fs.mkdirSync(paths.instance(mc), { recursive: true });
-  fs.writeFileSync(stateFile(mc), JSON.stringify(state, null, 2));
+function writeState(mc, state, loader = 'fabric') {
+  fs.mkdirSync(paths.instanceFor(mc, loader), { recursive: true });
+  fs.writeFileSync(stateFile(mc, loader), JSON.stringify(state, null, 2));
 }
 
 // ---- fabric.mod.json --------------------------------------------------------
@@ -121,11 +121,11 @@ function wantedCurated(settings) {
   });
 }
 
-async function resolveModrinth(slug, mc) {
+async function resolveModrinth(slug, mc, loader = 'fabric') {
   const url = `${MODRINTH}/project/${slug}/version?` + new URLSearchParams({
-    loaders: JSON.stringify(['fabric']), game_versions: JSON.stringify([mc]),
+    loaders: JSON.stringify([loader]), game_versions: JSON.stringify([mc]),
   });
-  const versions = await fetchJsonCached(url, path.join(paths.cache, 'modrinth', `${slug}_${mc}.json`), 6 * 3600 * 1000);
+  const versions = await fetchJsonCached(url, path.join(paths.cache, 'modrinth', `${slug}_${loader}_${mc}.json`), 6 * 3600 * 1000);
   const order = { release: 0, beta: 1, alpha: 2 };
   const best = versions.slice().sort((a, b) =>
     (order[a.version_type] - order[b.version_type]) || (Date.parse(b.date_published) - Date.parse(a.date_published)))[0];
@@ -142,14 +142,16 @@ async function resolveModrinth(slug, mc) {
  * Installs/updates curated mods (and SwiftClient's own mod) for `mc`, removing
  * curated files that are no longer wanted. User mods are left alone.
  */
-async function syncMods(mc, settings, { swiftMod, onProgress = () => {} } = {}) {
-  const dir = modsDir(mc);
+async function syncMods(mc, settings, { swiftMod, onProgress = () => {}, loader = 'fabric' } = {}) {
+  const dir = modsDir(mc, loader);
   fs.mkdirSync(dir, { recursive: true });
-  const state = readState(mc);
-  const wanted = wantedCurated(settings);
+  const state = readState(mc, loader);
+  // The curated set and SwiftClient's own mod are Fabric-only; other loaders get a clean mods dir.
+  const wanted = loader === 'fabric' ? wantedCurated(settings) : [];
+  if (loader !== 'fabric') swiftMod = null;
 
   onProgress(0, wanted.length, 'Resolving mods');
-  const resolved = await Promise.all(wanted.map((m) => resolveModrinth(m.slug, mc).catch(() => null)));
+  const resolved = await Promise.all(wanted.map((m) => resolveModrinth(m.slug, mc, loader).catch(() => null)));
   const plan = new Map(); // projectId -> resolved version
   const unavailable = [];
   wanted.forEach((m, i) => (resolved[i] ? plan.set(resolved[i].projectId, resolved[i]) : unavailable.push(m.name)));
@@ -160,7 +162,7 @@ async function syncMods(mc, settings, { swiftMod, onProgress = () => {} } = {}) 
     if (!missing.length) break;
     const deps = await Promise.all(missing.map(async (id) => {
       const info = await fetchJsonCached(`${MODRINTH}/project/${id}`, path.join(paths.cache, 'modrinth', `project_${id}.json`), 7 * 24 * 3600 * 1000).catch(() => null);
-      const dep = info && await resolveModrinth(info.slug, mc).catch(() => null);
+      const dep = info && await resolveModrinth(info.slug, mc, loader).catch(() => null);
       if (dep) dep.dependency = true;
       return dep;
     }));
@@ -179,7 +181,7 @@ async function syncMods(mc, settings, { swiftMod, onProgress = () => {} } = {}) 
 
   const next = {};
   for (const p of usable) next[p.slug] = { file: p.filename, version: p.version };
-  if (swiftMod) next.swiftclient = { file: path.basename(swiftMod), version: 'bundled' };
+  if (swiftMod && loader === 'fabric') next.swiftclient = { file: path.basename(swiftMod), version: 'bundled' };
 
   // Remove curated files that changed or are no longer wanted.
   for (const [slug, info] of Object.entries(state.managed || {})) {
@@ -190,7 +192,7 @@ async function syncMods(mc, settings, { swiftMod, onProgress = () => {} } = {}) 
 
   await downloadAll(usable.map((p) => ({ url: p.url, file: path.join(dir, p.filename), sha512: p.sha512, size: p.size })),
     { onProgress, label: 'Mods' });
-  if (swiftMod) fs.copyFileSync(swiftMod, path.join(dir, path.basename(swiftMod)));
+  if (swiftMod && loader === 'fabric') fs.copyFileSync(swiftMod, path.join(dir, path.basename(swiftMod)));
 
   // Remember the mod ids each curated jar provides, for import conflict checks.
   for (const [slug, info] of Object.entries(next)) {
@@ -198,45 +200,60 @@ async function syncMods(mc, settings, { swiftMod, onProgress = () => {} } = {}) 
     info.ids = [meta.id, ...(meta.provides || [])].filter(Boolean);
     info.name = meta.name || slug;
   }
-  writeState(mc, { managed: next });
+  writeState(mc, { managed: next }, loader);
   return { installed: Object.keys(next), unavailable };
 }
 
 // ---- Modrinth browser ---------------------------------------------------------
 
-/** Fabric mods on Modrinth that have a build for this Minecraft version. */
-async function searchModrinth(mc, query) {
+/** Modrinth search with loader, category and sort filters (Fabric installs, other loaders browse-only). */
+async function searchModrinth(mc, options = {}) {
+  const opts = typeof options === 'string' ? { query: options } : (options || {});
+  const loaders = ['fabric', 'quilt', 'forge', 'neoforge'];
+  const loader = loaders.includes(opts.loader) ? opts.loader : 'fabric';
+  const facets = [['project_type:mod'], [`versions:${mc}`], [`categories:${loader}`]];
+  if (opts.category) facets.push([`categories:${opts.category}`]);
+  const index = ['downloads', 'newest', 'updated', 'relevance'].includes(opts.sort) ? opts.sort : 'downloads';
   const url = `${MODRINTH}/search?` + new URLSearchParams({
-    query: query || '',
-    limit: '20',
-    index: 'relevance',
-    facets: JSON.stringify([['project_type:mod'], ['categories:fabric'], [`versions:${mc}`]]),
+    query: String(opts.query || '').trim(),
+    limit: String(Math.min(50, Math.max(1, Number(opts.limit) || 20))),
+    offset: String(Math.max(0, Number(opts.offset) || 0)),
+    index,
+    facets: JSON.stringify(facets),
   });
   const data = await fetchJson(url);
-  return (data.hits || []).map((h) => ({
-    slug: h.slug,
-    title: h.title,
-    description: h.description || '',
-    downloads: h.downloads || 0,
-    author: h.author || '',
-  }));
+  return (data.hits || []).map((h) => {
+    const categories = h.categories || [];
+    return {
+      slug: h.slug,
+      title: h.title,
+      description: h.description || '',
+      downloads: h.downloads || 0,
+      author: h.author || '',
+      icon: h.icon_url || '',
+      categories,
+      loaders: categories.filter((c) => loaders.includes(c)),
+      loader,
+      projectId: h.project_id,
+    };
+  });
 }
 
-/** Downloads a Modrinth project's best Fabric build for `mc` into that instance's mods folder. */
-async function installModrinth(mc, slug) {
-  const managed = managedIds(mc);
+/** Downloads a Modrinth project's best build for `mc` and `loader` into that instance's mods folder. */
+async function installModrinth(mc, slug, loader = 'fabric') {
+  const managed = managedIds(mc, loader);
   if (managed.has(slug)) return { ok: false, problems: [`${managed.get(slug)} is already included by SwiftClient.`] };
 
   const project = await fetchJson(`${MODRINTH}/project/${slug}`).catch(() => null);
   if (!project) return { ok: false, problems: [`Modrinth project ${slug} not found.`] };
-  const resolved = await resolveModrinth(slug, mc);
-  if (!resolved) return { ok: false, problems: [`${project.title} has no Fabric build for Minecraft ${mc}.`] };
+  const resolved = await resolveModrinth(slug, mc, loader);
+  if (!resolved) return { ok: false, problems: [`${project.title} has no ${loader} build for Minecraft ${mc}.`] };
 
-  const dir = modsDir(mc);
+  const dir = modsDir(mc, loader);
   fs.mkdirSync(dir, { recursive: true });
   // Replace an older copy of the same mod, unless SwiftClient manages it.
   const target = path.join(dir, resolved.filename);
-  for (const m of listMods(mc)) {
+  for (const m of listMods(mc, loader)) {
     if (!m.managed && m.file !== resolved.filename && path.join(dir, m.file) !== target) {
       const meta = readModMeta(path.join(dir, m.file));
       if (meta.id && meta.id === project.id) { try { fs.unlinkSync(path.join(dir, m.file)); } catch { /* gone */ } }
@@ -250,9 +267,9 @@ async function installModrinth(mc, slug) {
 
 // ---- user mods --------------------------------------------------------------
 
-function listMods(mc) {
-  const dir = modsDir(mc);
-  const state = readState(mc);
+function listMods(mc, loader = 'fabric') {
+  const dir = modsDir(mc, loader);
+  const state = readState(mc, loader);
   const managedFiles = new Map(Object.entries(state.managed || {}).map(([slug, i]) => [i.file, { slug, ...i }]));
   let files = [];
   try { files = fs.readdirSync(dir).filter((f) => /\.jar(\.disabled)?$/i.test(f)); } catch { /* none yet */ }
@@ -265,81 +282,89 @@ function listMods(mc) {
   }).sort((a, b) => (a.managed - b.managed) || a.name.localeCompare(b.name));
 }
 
-function managedIds(mc) {
+function managedIds(mc, loader = 'fabric') {
   const ids = new Map();
-  for (const [slug, info] of Object.entries(readState(mc).managed || {})) {
+  for (const [slug, info] of Object.entries(readState(mc, loader).managed || {})) {
     for (const id of info.ids || [slug]) ids.set(id, info.name || slug);
   }
   return ids;
 }
 
-/** Checks a jar for import into `mc`. Returns {ok, meta, problems[], warnings[]} without copying. */
-function checkMod(mc, jarPath) {
+/** Checks a jar for import into `mc` on `loader`. Returns {ok, meta, problems[], warnings[]} without copying. */
+function checkMod(mc, jarPath, loader = 'fabric') {
   const problems = [];
   const warnings = [];
   if (!/\.jar$/i.test(jarPath)) return { ok: false, problems: ['Only .jar files can be imported.'], warnings };
   const meta = readModMeta(jarPath);
   const kinds = {
     invalid: meta.error || 'This file is not a valid mod jar.',
-    quilt: 'This is a Quilt-only mod. SwiftClient runs Fabric; look for the Fabric version of this mod.',
-    forge: 'This is a Forge mod. SwiftClient runs Fabric; look for the Fabric version of this mod.',
-    neoforge: 'This is a NeoForge mod. SwiftClient runs Fabric; look for the Fabric version of this mod.',
-    unknown: 'No fabric.mod.json found: this is not a Fabric mod.',
+    unknown: `No mod metadata found: this does not look like a ${loader} mod.`,
   };
   if (kinds[meta.kind]) return { ok: false, meta, problems: [kinds[meta.kind]], warnings };
+
+  // Quilt loads Fabric mods too; Forge and NeoForge need their own builds.
+  const compatible = loader === 'fabric' ? meta.kind === 'fabric'
+    : loader === 'quilt' ? (meta.kind === 'quilt' || meta.kind === 'fabric')
+    : meta.kind === loader;
+  if (!compatible) {
+    const name = (id) => (id === 'neoforge' ? 'NeoForge' : id.charAt(0).toUpperCase() + id.slice(1));
+    return { ok: false, meta, problems: [`This is a ${name(meta.kind)} mod. This profile runs ${name(loader)}; look for the ${name(loader)} version of this mod.`], warnings };
+  }
 
   if (INCOMPATIBLE[meta.id]) problems.push(INCOMPATIBLE[meta.id]);
   if (meta.environment === 'server') problems.push(`${meta.name} is a server-only mod.`);
 
-  const mcOk = versionMatches(mc, meta.depends.minecraft);
-  if (mcOk === false) problems.push(`${meta.name} ${meta.version} needs Minecraft ${[].concat(meta.depends.minecraft).join(' or ')}, but this profile is ${mc}.`);
-  else if (mcOk === null) warnings.push(`Could not read which Minecraft versions ${meta.name} supports.`);
+  if (loader === 'fabric') {
+    const mcOk = versionMatches(mc, meta.depends.minecraft);
+    if (mcOk === false) problems.push(`${meta.name} ${meta.version} needs Minecraft ${[].concat(meta.depends.minecraft).join(' or ')}, but this profile is ${mc}.`);
+    else if (mcOk === null) warnings.push(`Could not read which Minecraft versions ${meta.name} supports.`);
 
-  const javaReq = meta.depends.java;
-  if (javaReq && versionMatches('25', javaReq) === false && versionMatches('21', javaReq) === false) {
-    warnings.push(`${meta.name} asks for Java ${javaReq}.`);
+    const javaReq = meta.depends.java;
+    if (javaReq && versionMatches('25', javaReq) === false && versionMatches('21', javaReq) === false) {
+      warnings.push(`${meta.name} asks for Java ${javaReq}.`);
+    }
   }
 
-  const managed = managedIds(mc);
+  const managed = managedIds(mc, loader);
   if (managed.has(meta.id)) problems.push(`${meta.name} is already included by SwiftClient (${managed.get(meta.id)}).`);
-  for (const id of Object.keys(meta.breaks)) {
+  for (const id of Object.keys(meta.breaks || {})) {
     if (managed.has(id)) problems.push(`${meta.name} declares it breaks ${managed.get(id)}, which SwiftClient includes.`);
   }
 
   // Missing dependencies are a warning: the user may import them next.
   const present = new Set([...managed.keys(), 'minecraft', 'java', 'fabricloader', 'fabric']);
-  for (const m of listMods(mc)) if (m.id) present.add(m.id);
-  const missing = Object.keys(meta.depends).filter((id) => !present.has(id) && !id.startsWith('fabric-'));
+  for (const m of listMods(mc, loader)) if (m.id) present.add(m.id);
+  const missing = Object.keys(meta.depends || {}).filter((id) => !present.has(id) && !id.startsWith('fabric-'));
   if (missing.length) warnings.push(`${meta.name} also needs: ${missing.join(', ')}. Import those too or it will not load.`);
 
   return { ok: problems.length === 0, meta, problems, warnings };
 }
 
-function importMod(mc, jarPath) {
-  const result = checkMod(mc, jarPath);
+function importMod(mc, jarPath, loader = 'fabric') {
+  const result = checkMod(mc, jarPath, loader);
   if (!result.ok) return result;
-  const dir = modsDir(mc);
+  const dir = modsDir(mc, loader);
   fs.mkdirSync(dir, { recursive: true });
   // Replace an older copy of the same mod.
-  for (const m of listMods(mc)) {
+  for (const m of listMods(mc, loader)) {
     if (!m.managed && m.id && m.id === result.meta.id) fs.unlinkSync(path.join(dir, m.file));
   }
   fs.copyFileSync(jarPath, path.join(dir, path.basename(jarPath)));
   return result;
 }
 
-function setModEnabled(mc, file, enabled) {
-  const dir = modsDir(mc);
+function setModEnabled(mc, file, enabled, loader = 'fabric') {
+  const dir = modsDir(mc, loader);
   const base = file.replace(/\.disabled$/, '');
   const from = path.join(dir, file);
   const to = path.join(dir, enabled ? base : `${base}.disabled`);
   if (from !== to) fs.renameSync(from, to);
 }
 
-function removeMod(mc, file) {
-  const state = readState(mc);
+function removeMod(mc, file, loader = 'fabric') {
+  const state = readState(mc, loader);
   if (Object.values(state.managed || {}).some((i) => i.file === file)) throw new Error('Built-in mods cannot be removed; turn them off in Settings instead.');
-  fs.unlinkSync(path.join(modsDir(mc), file));
+  fs.unlinkSync(path.join(modsDir(mc, loader), file));
 }
 
 module.exports = {

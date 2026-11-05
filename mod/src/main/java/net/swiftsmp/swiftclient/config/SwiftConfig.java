@@ -50,6 +50,29 @@ public final class SwiftConfig {
 	public boolean showOwnCape = true;
 	/** Turn on the SwiftSMP badge automatically on SwiftSMP. */
 	public boolean swiftsmpHud = true;
+	/** SwiftBoost: adaptive render distance, particles and entity distance for a higher frame rate. */
+	public boolean swiftBoost = false;
+	public int boostTarget = 60;
+	public int boostSavedDistance = -1;
+	public int boostSavedParticles = -1;
+	public double boostSavedEntityDistance = -1;
+	public int boostSavedClouds = -1;
+	public int boostSavedShadows = -1;
+	public int boostSavedAo = -1;
+	public int boostSavedFpsLimit = -1;
+	/** In-world lyrics, shown as 3D billboarded text instead of a screen HUD. */
+	public boolean lyricsEnabled = false;
+	/** Positive values show lyrics later; negative values show them earlier. */
+	public int lyricsOffsetMs = -1500;
+	public float lyricsScale = 1f;
+	/** Height of the sky word above the player's eyes. */
+	public float lyricsSkyHeight = 20f;
+	/** Reveal one word at a time instead of the whole karaoke line. */
+	public boolean lyricsWordByWord = false;
+	/** Pump the screen and lyrics to the music's bass (or the song's rhythm where capture is blocked). */
+	public boolean bassMode = false;
+	/** Dynamic-Island-style now-playing pill at the top-centre of the screen. */
+	public boolean nowPlayingIsland = true;
 
 	public static SwiftConfig get() {
 		if (instance == null) load();
@@ -66,6 +89,10 @@ public final class SwiftConfig {
 		}
 		if (instance == null) instance = new SwiftConfig();
 		if (instance.modules == null) instance.modules = new LinkedHashMap<>();
+		if (instance.boostTarget < 30 || instance.boostTarget > 240) instance.boostTarget = 60;
+		if (instance.lyricsOffsetMs < -10000 || instance.lyricsOffsetMs > 10000) instance.lyricsOffsetMs = 0;
+		if (instance.lyricsScale < 0.5f || instance.lyricsScale > 2f) instance.lyricsScale = 1f;
+		if (instance.lyricsSkyHeight < 0f || instance.lyricsSkyHeight > 40f) instance.lyricsSkyHeight = 20f;
 	}
 
 	public static void save() {

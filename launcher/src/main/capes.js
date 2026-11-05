@@ -19,9 +19,9 @@ function friendlyCapeError(e) {
   let message;
   const msg = serverError(e);
   if (msg) message = msg;
-  else if (e.status === 429) message = 'The cape server is busy. Please try again in a minute.';
-  else if (e.status >= 500) message = 'The cape server hit an error. Please try again shortly.';
-  else if (!e.status) message = 'Could not reach the cape server. Check your internet connection and try again.';
+  else if (e.status === 429) message = 'The cloak server is busy. Please try again in a minute.';
+  else if (e.status >= 500) message = 'The cloak server hit an error. Please try again shortly.';
+  else if (!e.status) message = 'Could not reach the cloak server. Check your internet connection and try again.';
   if (!message) return e;
   const out = new Error(message);
   out.status = e.status;
@@ -60,7 +60,7 @@ class Capes {
    * the Minecraft access token, which the cape server verifies with Mojang and never stores.
    */
   async select(session, capeId) {
-    if (!this.base) throw new Error('Shared capes are not configured.');
+    if (!this.base) throw new Error('Shared cloaks are not configured.');
     let serverId;
     try {
       ({ serverId } = await fetchJson(`${this.base}/auth/challenge`, { method: 'POST' }));
@@ -104,7 +104,7 @@ class Capes {
    * handshake as select, then the server adds the cape to that player's account.
    */
   async redeem(session, code) {
-    if (!this.base) throw new Error('Shared capes are not configured.');
+    if (!this.base) throw new Error('Shared cloaks are not configured.');
     const clean = String(code || '').trim();
     if (!clean) throw new Error('Enter a code first.');
     let serverId;
@@ -150,8 +150,13 @@ class Capes {
    * Admin only: list or create redeem codes. Same join/token handshake as redeem; the server
    * refuses anyone who is not on its admin list.
    */
-  async adminCodes(session, request) {
-    if (!this.base) throw new Error('Shared capes are not configured.');
+  adminCodes(session, request) { return this.adminRequest(session, '/admin/codes', request); }
+  adminCapes(session, request) { return this.adminRequest(session, '/admin/capes', request); }
+  adminPartners(session, request) { return this.adminRequest(session, '/admin/partners', request); }
+
+  /** Admin-only POST with the Mojang join/token handshake shared by codes, capes and partners. */
+  async adminRequest(session, route, request) {
+    if (!this.base) throw new Error('Shared cloaks are not configured.');
     let serverId;
     try {
       ({ serverId } = await fetchJson(`${this.base}/auth/challenge`, { method: 'POST' }));
@@ -172,7 +177,7 @@ class Capes {
     }
     const body = { name: session.name, serverId, ...request };
     try {
-      return await fetchJson(`${this.base}/admin/codes`, {
+      return await fetchJson(`${this.base}${route}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -180,7 +185,7 @@ class Capes {
     } catch (e) {
       if (e.status !== 403 || !/could not verify/i.test(serverError(e))) throw friendlyCapeError(e);
       try {
-        return await fetchJson(`${this.base}/admin/codes`, {
+        return await fetchJson(`${this.base}${route}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...body, accessToken: session.accessToken }),
@@ -188,6 +193,17 @@ class Capes {
       } catch (retryError) {
         throw friendlyCapeError(retryError);
       }
+    }
+  }
+
+  /** Partner addresses hidden by an admin; empty on network errors so servers stay visible. */
+  async hiddenPartners() {
+    if (!this.base) return [];
+    try {
+      const data = await fetchJson(`${this.base}/partners/hidden`);
+      return Array.isArray(data.hidden) ? data.hidden : [];
+    } catch {
+      return [];
     }
   }
 

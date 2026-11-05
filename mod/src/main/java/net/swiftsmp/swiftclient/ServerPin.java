@@ -36,12 +36,50 @@ public final class ServerPin {
 		return out;
 	}
 
+	/** Partner addresses an admin hid; their existing server-list entries are removed. */
+	public static List<String> hiddenServers() {
+		String raw = System.getProperty("swiftclient.hiddenServers", "");
+		if (raw.isBlank()) return List.of();
+		List<String> out = new ArrayList<>();
+		for (String entry : raw.split(";")) if (!entry.isBlank()) out.add(entry.trim());
+		return out;
+	}
+
+	/** The pinned servers players may see, i.e. with hidden partner entries removed. */
+	public static List<Pinned> visibleServers() {
+		List<String> hidden = hiddenServers();
+		List<Pinned> out = new ArrayList<>();
+		for (Pinned server : pinnedServers()) {
+			boolean skip = false;
+			for (String address : hidden) {
+				if (sameServer(server.address(), address)) { skip = true; break; }
+			}
+			if (!skip) out.add(server);
+		}
+		return out;
+	}
+
 	public static void pin(Minecraft mc) {
 		List<Pinned> pinned = pinnedServers();
-		if (pinned.isEmpty()) return;
+		List<String> hidden = hiddenServers();
+		if (pinned.isEmpty() && hidden.isEmpty()) return;
 		try {
 			ServerList list = new ServerList(mc);
 			list.load();
+			boolean changed = false;
+			for (int i = list.size() - 1; i >= 0; i--) {
+				for (String address : hidden) {
+					if (sameServer(list.get(i).ip, address)) {
+						list.remove(list.get(i));
+						changed = true;
+						break;
+					}
+				}
+			}
+			if (pinned.isEmpty()) {
+				if (changed) list.save();
+				return;
+			}
 			// Walk backwards so each pinned server ends up at the top, in launcher order.
 			for (int p = pinned.size() - 1; p >= 0; p--) {
 				Pinned want = pinned.get(p);
@@ -69,5 +107,14 @@ public final class ServerPin {
 		String a = ip.toLowerCase(Locale.ROOT).replaceAll(":25565$", "");
 		String b = address.toLowerCase(Locale.ROOT).replaceAll(":25565$", "");
 		return a.equals(b) || a.endsWith("swiftsmp.net") && b.endsWith("swiftsmp.net");
+	}
+
+	/** True when this server entry is one the launcher pins (SwiftSMP or a partner). */
+	public static boolean isPinned(ServerData server) {
+		if (server == null || server.ip == null) return false;
+		for (Pinned pinned : pinnedServers()) {
+			if (sameServer(server.ip, pinned.address())) return true;
+		}
+		return false;
 	}
 }

@@ -69,7 +69,7 @@ public final class Modules {
 		@Override public void render(Gfx g, Minecraft mc, boolean preview) {
 			int w = width(mc);
 			boolean bg = SwiftConfig.get().hudBackground;
-			if (bg) Theme.glass(g, 0, 0, w, 16, 4, Theme.alpha(Theme.BG, 0.55f));
+			if (bg) Theme.hudGlass(g, 0, 0, w, 16, 4, Theme.alpha(Theme.BG, 0.55f));
 			g.text(mc.font, text(mc), 5, 4, Theme.TEXT, !bg);
 		}
 
@@ -174,7 +174,7 @@ public final class Modules {
 				Theme.glow(g, x, y, w, h, 4, 1f);
 				Theme.round(g, x, y, w, h, 4, Theme.ACCENT);
 			} else if (SwiftConfig.get().hudBackground) {
-				Theme.glass(g, x, y, w, h, 4, Theme.alpha(Theme.BG, 0.55f));
+				Theme.hudGlass(g, x, y, w, h, 4, Theme.alpha(Theme.BG, 0.55f));
 			}
 			if (!label.isEmpty()) {
 				Font f = mc.font;
@@ -209,7 +209,7 @@ public final class Modules {
 		@Override public void render(Gfx g, Minecraft mc, boolean preview) {
 			List<ItemStack> items = worn(mc, preview);
 			if (items.isEmpty()) return;
-			if (SwiftConfig.get().hudBackground) Theme.glass(g, 0, 0, width(mc), items.size() * 17 + 2, 4, Theme.alpha(Theme.BG, 0.55f));
+			if (SwiftConfig.get().hudBackground) Theme.hudGlass(g, 0, 0, width(mc), items.size() * 17 + 2, 4, Theme.alpha(Theme.BG, 0.55f));
 			for (int i = 0; i < items.size(); i++) {
 				ItemStack stack = items.get(i);
 				int y = 1 + i * 17;
@@ -253,7 +253,7 @@ public final class Modules {
 
 		@Override public void render(Gfx g, Minecraft mc, boolean preview) {
 			int w = width(mc);
-			Theme.glass(g, 0, 0, w, 26, 5, Theme.alpha(Theme.BG, 0.6f));
+			Theme.hudGlass(g, 0, 0, w, 26, 5, Theme.alpha(Theme.BG, 0.6f));
 			g.fill(5, 0, w - 5, 1, Theme.ACCENT);
 			Theme.logo(g, 5, 4, 18);
 			g.text(mc.font, Theme.display("Swift").withColor(Theme.TEXT).append(Theme.display("SMP").withColor(Theme.ACCENT)), 28, 4, Theme.TEXT, true);

@@ -101,7 +101,9 @@ public final class CapeManager {
 				NativeImage image = NativeImage.read(res.body());
 				Minecraft.getInstance().execute(() -> {
 					Identifier id = Identifier.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "capes/" + capeId);
-					Minecraft.getInstance().getTextureManager().register(id, new DynamicTexture(() -> "SwiftClient cape " + capeId, image));
+					DynamicTexture texture = new DynamicTexture(() -> "SwiftClient cape " + capeId, image);
+					smooth(texture);
+					Minecraft.getInstance().getTextureManager().register(id, texture);
 					textures.put(capeId, new ClientAsset.ResourceTexture(id, id));
 					loadingCapes.remove(capeId);
 				});
@@ -114,6 +116,15 @@ public final class CapeManager {
 				}, "SwiftClient-CapeRetry").start();
 			}
 		});
+	}
+
+	/** Linear filtering keeps HD cloak art clean when it shrinks on screen. */
+	private static void smooth(DynamicTexture texture) {
+		try {
+			texture.getClass().getMethod("setFilter", boolean.class, boolean.class).invoke(texture, true, false);
+		} catch (ReflectiveOperationException | RuntimeException ignored) {
+			// Keep the renderer's default filtering where setFilter is unavailable.
+		}
 	}
 
 	private static HttpRequest request(String path) {

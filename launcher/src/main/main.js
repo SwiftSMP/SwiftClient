@@ -48,6 +48,33 @@ async function serverStatusNow(maxAgeMs = 30000) {
   return serverStatus.value;
 }
 
+// Pinned and partner servers for the launcher's server strip.
+const normServerAddress = (value) => String(value || '').trim().toLowerCase()
+  .replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:25565$/, '');
+async function allServers() {
+  const hidden = new Set((await capes.hiddenPartners()).map(normServerAddress));
+  return (appConfig.servers || []).map((server) => ({ ...server, hidden: hidden.has(normServerAddress(server.address)) }));
+}
+const serverCache = new Map();
+async function serversNow(maxAgeMs = 30000) {
+  const list = (await allServers()).filter((server) => !server.hidden);
+  const now = Date.now();
+  return Promise.all(list.map(async (server) => {
+    const cached = serverCache.get(server.address);
+    if (cached && now - cached.at < maxAgeMs) return cached.value;
+    try {
+      const status = await pingServer(server.address, { timeoutMs: 4000 });
+      const value = { ...server, ...status };
+      serverCache.set(server.address, { at: now, value });
+      return value;
+    } catch (e) {
+      const value = { ...server, offline: true, error: e.message };
+      serverCache.set(server.address, { at: now, value });
+      return value;
+    }
+  }));
+}
+
 function restartStats() {
   const settings = loadSettings();
   stats.start(app.getVersion(), {
@@ -116,9 +143,10 @@ function swiftModFor(mc) {
 // ---- IPC -----------------------------------------------------------------------
 
 const handlers = {
-  'app:info': () => ({
+  'app:info': async () => ({
     version: app.getVersion(),
     server: appConfig.server,
+    servers: await allServers(),
     authConfigured: !!appConfig.msClientId,
     capesEnabled: capes.enabled(),
     dataDir: paths.root,
@@ -147,7 +175,7 @@ const handlers = {
     platform: `${require('os').platform()} ${require('os').arch()}`,
   }),
 
-  'stats:get': async () => ({ client: stats.last, server: await serverStatusNow(), downloads: await downloadsNow() }),
+  'stats:get': async () => ({ client: stats.last, server: await serverStatusNow(), servers: await serversNow(), downloads: await downloadsNow() }),
 
   'versions:list': async () => {
     const list = await minecraft.listVersions(appConfig.minVersion);
@@ -155,22 +183,24 @@ const handlers = {
   },
 
   'mods:curated': () => mods.CURATED,
-  'mods:list': (_e, mc) => mods.listMods(mc),
-  'mods:check': (_e, mc, file) => mods.checkMod(mc, file),
-  'mods:import': (_e, mc, files) => files.map((f) => ({ file: path.basename(f), ...mods.importMod(mc, f) })),
+  'mods:list': (_e, mc, loader) => mods.listMods(mc, loader),
+  'mods:check': (_e, mc, file, loader) => mods.checkMod(mc, file, loader),
+  'mods:import': (_e, mc, files, loader) => files.map((f) => ({ file: path.basename(f), ...mods.importMod(mc, f, loader) })),
   'mods:pick': async () => {
-    const r = await dialog.showOpenDialog(win, { title: 'Import mods', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Fabric mods', extensions: ['jar'] }] });
+    const r = await dialog.showOpenDialog(win, { title: 'Import mods', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Mod jars', extensions: ['jar'] }] });
     return r.canceled ? [] : r.filePaths;
   },
-  'mods:toggle': (_e, mc, file, enabled) => mods.setModEnabled(mc, file, enabled),
-  'mods:remove': (_e, mc, file) => mods.removeMod(mc, file),
-  'mods:search': (_e, mc, query) => mods.searchModrinth(mc, query),
-  'mods:install': (_e, mc, slug) => mods.installModrinth(mc, slug),
+  'mods:toggle': (_e, mc, file, enabled, loader) => mods.setModEnabled(mc, file, enabled, loader),
+  'mods:remove': (_e, mc, file, loader) => mods.removeMod(mc, file, loader),
+  'mods:search': (_e, mc, options) => mods.searchModrinth(mc, options),
+  'mods:install': (_e, mc, slug, loader) => mods.installModrinth(mc, slug, loader),
 
   'capes:catalog': async () => capes.catalog(auth.current() && auth.current().uuid),
   'capes:select': async (_e, id) => capes.select(await auth.session(), id),
   'capes:redeem': async (_e, code) => capes.redeem(await auth.session(), code),
   'capes:admin': async (_e, request) => capes.adminCodes(await auth.session(), request),
+  'capes:adminCapes': async (_e, request) => capes.adminCapes(await auth.session(), request),
+  'partners:admin': async (_e, request) => capes.adminPartners(await auth.session(), request),
 
   'social:state': async () => social.state(await auth.session()),
   'social:request': async (_e, target) => social.request(await auth.session(), String(target || '').trim()),
@@ -200,6 +230,7 @@ for (const [channel, fn] of Object.entries(handlers)) {
 async function launch({ join = false } = {}) {
   if (game) throw new Error('Minecraft is already running.');
   const settings = loadSettings();
+  const loader = settings.loader || 'fabric';
   const versions = await minecraft.listVersions(appConfig.minVersion);
   const mc = settings.version && versions.includes(settings.version) ? settings.version : versions[0];
   const progress = (done, total, label) => send('launch:progress', { done, total, label });
@@ -207,20 +238,29 @@ async function launch({ join = false } = {}) {
   if (!auth.current()) throw new Error('Sign in with the Microsoft account that owns Minecraft to play.');
   const session = await auth.session();
   progress(0, 1, `Preparing Minecraft ${mc}`);
-  const profile = await minecraft.install(mc, progress);
+  const profile = await minecraft.install(mc, progress, loader);
 
-  const swiftMod = swiftModFor(mc);
-  const result = await mods.syncMods(mc, settings, { swiftMod, onProgress: progress });
+  const swiftMod = loader === 'fabric' ? swiftModFor(mc) : null;
+  const result = await mods.syncMods(mc, settings, { swiftMod, loader, onProgress: progress });
   if (result.unavailable.length) send('launch:notice', `Not available for ${mc} yet: ${result.unavailable.join(', ')}`);
-  if (!swiftMod) send('launch:notice', `SwiftClient capes and branding are not available for ${mc} yet.`);
+  if (loader !== 'fabric') {
+    send('launch:notice', `${loader === 'neoforge' ? 'NeoForge' : loader[0].toUpperCase() + loader.slice(1)}: SwiftClient's own mod is Fabric-only, so cloaks, HUD and menus are not active in this instance.`);
+  } else if (!swiftMod) {
+    send('launch:notice', `SwiftClient cloaks and branding are not available for ${mc} yet.`);
+  }
 
-  const gameDir = paths.instance(mc);
-  const joinServer = (join || settings.autoJoin) ? appConfig.server.address : null;
+  const gameDir = paths.instanceFor(mc, loader);
+  const joinServer = typeof join === 'string' ? join : ((join || settings.autoJoin) ? appConfig.server.address : null);
   const cmd = minecraft.buildCommand(profile, { session, gameDir, settings, launcherVersion: app.getVersion(), joinServer });
   const props = [`-Dswiftclient.server.address=${appConfig.server.address}`, `-Dswiftclient.server.name=${appConfig.server.name}`];
-  // Pinned and partner servers for the mod's server list: "name|address|partner|pinned" entries.
-  const servers = (appConfig.servers || []).map((s) => [s.name, s.address, s.partner ? 1 : 0, s.pinned ? 1 : 0].join('|'));
+  // Pinned and partner servers for the mod's server list: hidden partners are dropped and
+  // any stale server-list entry for them is removed by ServerPin.
+  const launchServers = await allServers();
+  const servers = launchServers.filter((s) => !s.hidden)
+    .map((s) => [s.name, s.address, s.partner ? 1 : 0, s.pinned ? 1 : 0].join('|'));
   if (servers.length) props.push(`-Dswiftclient.servers=${servers.join(';')}`);
+  const hiddenServers = launchServers.filter((s) => s.hidden).map((s) => s.address);
+  if (hiddenServers.length) props.push(`-Dswiftclient.hiddenServers=${hiddenServers.join(';')}`);
   if (appConfig.capeApi) props.push(`-Dswiftclient.capeApi=${appConfig.capeApi}`);
   cmd.args.splice(cmd.args.indexOf(profile.mainClass), 0, ...props);
 

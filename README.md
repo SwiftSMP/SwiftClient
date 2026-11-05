@@ -2,10 +2,11 @@
 
 The SwiftSMP Minecraft client for Windows. It
 installs Minecraft Java Edition through **Fabric** with a curated performance mod set, adds
-**SwiftClient capes** that every SwiftClient player can see, lets players **import their own
-mods**, shows **Discord Rich Presence** ("Playing on swiftsmp.net"), and updates itself.
-In game it has its own title screen, a Right Shift menu with movable HUD mods,
-and SwiftSMP pinned at the top of the server list.
+**SwiftClient capes** that every SwiftClient player can see, pins **SwiftSMP and partner servers** such as
+CyanRealms and ValenMC, lets players **import their own mods**, adds **friends and direct messages**,
+shows **Discord Rich Presence** ("Playing on swiftsmp.net"), and updates itself.
+In game it has its own title screen, a Servers screen for partners, a Right Shift
+menu with movable HUD mods, and SwiftSMP pinned at the top of the server list.
 
 Nothing from Mojang or the mod authors is bundled. Minecraft, the Java runtime and the
 libraries come from Mojang's official servers, Fabric from meta.fabricmc.net, and the mods
@@ -16,7 +17,7 @@ published hashes.
 SwiftClient/
 ├─ launcher/       Electron app (UI, Microsoft sign-in, installer, mod manager, Discord)
 ├─ mod/            "swiftclient" Fabric mod: in-game UI, HUD mods, capes, server pin, presence
-└─ cape-server/    Tiny Node server for the shared cape catalog and player selections
+└─ cape-server/    Node server for capes, player counts, friends, DMs and redeem codes
 ```
 
 ## How it works
@@ -29,6 +30,8 @@ SwiftClient/
 | Performance | `launcher/src/main/mods.js` `CURATED`: Sodium, Lithium, FerriteCore, ImmediatelyFast, EntityCulling, More Culling, BadOptimizations, ModernFix, Krypton, Dynamic FPS, plus optional Sodium Extra, Reese's Sodium Options, Mod Menu, Zoomify, Iris. The newest Modrinth build for the chosen Minecraft version is picked (release before beta before alpha), required libraries are added automatically, and a mod with no build for that version is skipped with a notice. G1 JVM flags tuned for short pauses. |
 | Your mods | Mods tab: drop `.jar` files or use Import. Each jar is checked: Fabric (not Forge/NeoForge/Quilt), the Minecraft version range in `fabric.mod.json`, not already included, not OptiFine/Canvas-style conflicts, `breaks` declarations, missing dependencies (warning). Each version has its own isolated folder in `%APPDATA%\.swiftclient\instances\<version>`. |
 | Capes | Players pick a cape in the Cosmetics tab. The launcher proves who they are with Mojang's `join`/`hasJoined` handshake (the same one Minecraft servers use). That check is tied to the player's IP, so when Mojang will not confirm it the launcher retries with its Minecraft access token, which the cape server verifies with Mojang and never stores or logs. The mod looks up each player it renders and swaps in their cape (and elytra, unless they have their own). |
+| Servers | SwiftSMP, CyanRealms and ValenMC are pinned in the server list from `servers` in the launcher config; the in-game title screen's **Servers** screen lists them with a PARTNER tag and joins in one click. |
+| Friends | The Friends tab adds players by Minecraft name, accepts or declines requests, and keeps a direct-message thread per friend. Every action proves the player through the same Mojang challenge as capes, and only friends can read or send messages. |
 | Discord | `launcher/src/main/discord.js` talks to Discord's local pipe. The mod prints join/leave events that the launcher turns into "Playing on swiftsmp.net", "Playing Singleplayer", "In the menus". On versions without the SwiftClient mod it falls back to reading Minecraft's "Connecting to…" log line. |
 | Player counts | The Play screen shows who is on SwiftSMP (a normal Minecraft server ping, no third-party status site) and how many SwiftClient players are online and how many installs exist (anonymous counters on the cape server; switch off with *Show live SwiftClient player counts*). |
 | Updates | `electron-updater` checks GitHub Releases on start and every hour, downloads in the background and installs on restart. If a build cannot install updates itself, the launcher still finds the newest release on GitHub and offers a one-click download. |
@@ -37,15 +40,17 @@ SwiftClient/
 
 | Feature | Details |
 |---|---|
-| Title screen | Replaces the vanilla one: panorama under a navy glass wash, SwiftClient logo, an orange **Join SwiftSMP** button (connects straight to `server.address`), glass Singleplayer / Multiplayer / Options / Quit, and SwiftClient / Language / Mods pills top right. |
+| Title screen | Replaces the vanilla one: panorama under a navy glass wash, SwiftClient logo, an orange **Join SwiftSMP** button (connects straight to `server.address`), glass Singleplayer / Multiplayer / Servers / Options / Quit, and SwiftClient / Language / Mods pills top right. |
 | Server list | SwiftSMP is added to Multiplayer if missing and moved back to the top on every start and whenever that screen opens. An old `play.swiftsmp.net` entry is rewritten to the current address. Other servers keep their order. |
 | SwiftClient menu | **Right Shift**. Sidebar with Mods / Visibility / Tweaks / Server, type-to-search, glass cards with ENABLED/DISABLED bars, scrolling. **Edit HUD** opens the layout editor. |
 | HUD mods | FPS, CPS, Ping, Coordinates (with facing), Clock, Keystrokes (WASD, mouse with CPS, jump), Armor status (durability colours), SwiftSMP badge (players online, only on SwiftSMP). Positions are stored as screen fractions so they survive resolution changes. |
 | HUD editor | Drag to move (snaps to edges and centre lines), scroll to resize (50–250 %), right-click to hide, Reset, Done. |
+| Lyrics | **F7** toggles synced sky lyrics: the current karaoke line floats in front of you (sung word in white, the rest in orange) while your music plays in any Windows media app (Spotify, Apple Music, YouTube Music, browsers) or, on Android, the active media session. Words come from LRCLIB and are cached on disk; only the title and artist are sent. A Dynamic-Island-style now-playing pill (PANEL_2 navy) sits top-centre, and **Bass pulse** pumps the screen and words to the music (real WASAPI low-frequency capture where it works, otherwise word onsets). Height, size and a ± sync offset are set in the Lyrics tab. Built into every 26.x and 1.21.x jar; on 1.21.x the line is drawn as a screen billboard instead of world-space text. |
 | Visibility | **F6** toggles all SwiftClient HUD mods. Switches to hide the vanilla scoreboard, boss bar, potion effects, titles and held-item name (Fabric `HudElementRegistry.replaceElement`). |
 | Tweaks | Auto sprint, Bright mode (max brightness, restores your old value), Zoom (**C**, 2–10×, eased), show/hide your own cape. |
 | Capes | Fetched per player from the cape server, cached, never blocking a frame. |
 | Vanilla screens | Every vanilla button (pause menu, Options, Multiplayer, icon buttons...) gets SwiftSMP glass with an orange hover; sliders get a glass track, orange fill and white knob (`AbstractButtonMixin`, `AbstractSliderButtonMixin`). Labels and icons stay vanilla. |
+| Pause menu | A SwiftClient button under the vanilla pause buttons opens the Right Shift menu. |
 
 Settings live in `<game dir>/config/swiftclient.json`. Fonts: Pixelify Sans ships inside the mod as
 a TTF font provider (`assets/swiftclient/font/pixel.json`).
@@ -54,6 +59,12 @@ Minecraft 26.3 notes for whoever ports this: the game moved from GLFW to SDL, so
 `InputConstants.KEY_*` and mouse buttons are SDL-numbered (`MOUSE_BUTTON_LEFT = 1`, `RIGHT = 3`, not 0/1).
 Item components are only bound once a world loads, so the title screen cannot draw item icons.
 
+The 26.x sky-lyrics renderer (`SubmitTextDisplay`) is built against 26.1 - 26.3, which differ:
+`LevelRenderState.worldPartialTicks` became `Minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(false)`,
+`GameRenderer.mainCamera()` is gone on 26.1 (read `CameraRenderState.pos` instead), and
+`PoseStack.rotate(Quaternion)` exists only on 26.3 (use `mulPose(new Matrix4f().rotation(q))`, valid on all
+three). All three stable calls are used so one source compiles on every 26.x.
+
 ## One-time setup (things only you can do)
 
 1. **Microsoft sign-in (required)**
@@ -61,7 +72,9 @@ Item components are only bound once a world loads, so the title screen cannot dr
    2. In *Authentication* enable **Allow public client flows**. No client secret is needed.
    3. New apps must be approved for the Minecraft API: submit the form at <https://aka.ms/mce-reviewappid> with the Application (client) ID. Until Mojang approves it, sign-in fails at the last step with HTTP 403.
    4. Put the client ID in `launcher/swiftclient.config.json` → `msClientId`.
-2. **Cape server**: deploy the Cloudflare Worker in `cape-server/worker/` (see below) to `https://capes.swiftsmp.com`, the default `capeApi`.
+2. **Cape server**: production runs `cape-server/server.js` on the VPS behind nginx at
+   `https://capes.swiftsmp.com`, the default `capeApi` (see below). The Cloudflare Worker in
+   `cape-server/worker/` is the alternative implementation.
 3. **Discord**: <https://discord.com/developers/applications> → New Application named **SwiftClient** (Discord shows "Playing SwiftClient"). In *Rich Presence → Art Assets* upload the logo with the key `logo`. Put the Application ID in `discordClientId`.
 4. **Releases**: create the GitHub repository the updater reads (currently `SwiftSMP/SwiftClient` in `launcher/package.json` → `build.publish` and `repository`; change both if it lives elsewhere). It must be **public** so players can download installers and updates. The website links to `https://github.com/SwiftSMP/SwiftClient/releases/latest/download/SwiftClient-Setup.exe`; update `CLIENT_DOWNLOAD` in the website's `app.js` and `SeoPages.java` if you change the repo.
 
@@ -74,7 +87,12 @@ Item components are only bound once a world loads, so the title screen cannot dr
   "discordClientId": "000000000000000000",
   "server": { "name": "SwiftSMP", "address": "swiftsmp.net" },
   "website": "https://swiftsmp.com",
-  "minVersion": "1.21"
+  "minVersion": "1.21",
+  "servers": [
+    { "name": "SwiftSMP", "address": "swiftsmp.net", "partner": false, "pinned": true },
+    { "name": "CyanRealms", "address": "play.cyanrealms.com", "partner": true, "pinned": true },
+    { "name": "ValenMC", "address": "play.valenmc.fun", "partner": true, "pinned": true }
+  ]
 }
 ```
 
@@ -88,7 +106,7 @@ Requirements: Node 20+ (tested with 24), JDK 25 (for the mod), internet access.
 ```bash
 # 1. the Fabric mod (one build per Minecraft version; see "Mod for more versions")
 cd mod
-./gradlew dist            # 26.3 -> mod/dist/swiftclient-1.1.0+26.3.jar and index.json
+./gradlew dist            # 26.3 -> mod/dist/swiftclient-1.3.0+26.3.jar and index.json
 ./gradlew dist -Pminecraft_version=26.2 -Pfabric_api_version=0.161.0+26.2
 ./gradlew dist -Pminecraft_version=26.1 -Pfabric_api_version=0.155.3+26.1.2
 node build-1.21.js         # all 12 1.21.x releases from mod/legacy
@@ -151,33 +169,45 @@ The zoom tweak changes the FOV option on 1.21.x instead of hooking `GameRenderer
 
 ## Cape server
 
-Runs as a Cloudflare Worker on `capes.swiftsmp.com` (`cape-server/worker/`). Capes are stored in
-Workers KV and the PNGs ship with the Worker.
+Production runs `cape-server/server.js` (zero dependencies, Node 18+) behind nginx at
+`https://capes.swiftsmp.com`, supervised by systemd. Capes ship in `capes/catalog.json` plus
+`capes/<id>.png`; mutable state lives in `data/`: `selections.json`, `grants.json`,
+`installs.json`, `codes.json` and `social.json` (friends, requests and DMs).
 
 ```bash
-cd cape-server/worker
-npm install
-npx wrangler login                          # once, in your browser
-npx wrangler kv namespace create CAPES      # once: put the id in wrangler.jsonc
-npx wrangler deploy                         # also after editing capes/
+# on the server, from the cape-server directory
+node --check server.js
+systemctl restart swiftclient-capes
+curl -s https://capes.swiftsmp.com/health   # {"ok":true,"capes":6,"version":2}
 ```
 
-- Catalog: `capes/catalog.json` + `capes/<id>.png` (64×32 Minecraft cape layout; HD 128×64 works too). Regenerate the defaults with `python tools/make_capes.py`, then deploy again.
-- `"public": true` capes are free for everyone. Others need a grant in the KV key `grants`, e.g.
-  `npx wrangler kv key put --remote --binding CAPES grants '{"<uuid without dashes>": ["staff", "founder"]}'`. No redeploy needed.
-- Selections are stored as `sel:<uuid>` keys, challenges as `ch:<serverId>` (2-minute TTL).
+- Catalog: 64×32 Minecraft cape layout; HD 128×64 also works. Regenerate the defaults with
+  `python tools/make_capes.py`, then copy `capes/` to the server and restart.
+- `"public": true` capes are free for everyone. Others need a grant in `data/grants.json`,
+  e.g. `{"<uuid without dashes>": ["staff", "founder"]}`. Staff and founder codes are created
+  in the launcher by the admin UUID and stored only as SHA-256 hashes.
+- `POST /social/<action>` covers `state`, `request`, `accept`, `decline`, `remove`, `messages`
+  and `send`. Every call proves the player with a fresh challenge, and DMs are limited to
+  accepted friends.
+- `/health` includes `version: 2`, which is the quickest way to tell whether the social routes
+  are deployed; a stale deploy answers 404 on `/social/state`.
 
-`cape-server/server.js` is the same API as a plain Node server (`PORT=8765 HOST=127.0.0.1` by
-default, data in `data/`) if you would rather host it yourself behind a reverse proxy.
+`cape-server/worker/` is the Cloudflare Worker variant (Workers KV, same API). It is not what
+production serves: Mojang answers 403 to session checks from Worker egress IPs, which is why
+the Node server exists.
 
-API: `GET /capes`, `GET /capes/<id>.png`, `GET /players/<uuid>.json`, `GET /players/<uuid>/available`, `GET /stats`, `POST /stats/heartbeat {id, version}`, `POST /auth/challenge`, `POST /select {name, serverId, cape, accessToken?}`.
+API: `GET /capes`, `GET /capes/<id>.png`, `GET /players/<uuid>.json`,
+`GET /players/<uuid>/available`, `GET /stats`; `POST /stats/heartbeat {id, version}`,
+`POST /auth/challenge`, `POST /select {name, serverId, cape, accessToken?}`,
+`POST /social/<action> {name, serverId, accessToken?, ...}`,
+`POST /redeem {name, serverId, code, accessToken?}` and `POST /admin/codes`.
 
 Cape selection either passes Mojang's `hasJoined` check or, when Mojang will not confirm the
-session (it binds a `join` to the player's IP, which a Worker cannot share), with the player's
-Minecraft access token that is verified against `api.minecraftservices.com` and immediately
-discarded. A challenge is only spent when verification succeeds, so the launcher can retry.
-Stats are anonymous: a random install id, the version and a heartbeat; `/stats` returns
-`{users, online}`. Each heartbeat is a KV write, so presence uses a 25-minute TTL.
+session (it binds a `join` to the player's IP), uses the player's Minecraft access token, which
+is verified against `api.minecraftservices.com` and immediately discarded. A challenge is only
+spent when verification succeeds, so the launcher can retry. Stats are anonymous: a random
+install id, the version and a heartbeat; `/stats` returns `{users, online}` with a 25-minute
+presence TTL.
 
 ## Android
 

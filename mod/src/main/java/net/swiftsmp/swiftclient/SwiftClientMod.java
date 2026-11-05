@@ -9,14 +9,19 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.swiftsmp.swiftclient.config.SwiftConfig;
 import net.swiftsmp.swiftclient.hud.HudRenderer;
+import net.swiftsmp.swiftclient.lyrics.LyricsService;
+import net.swiftsmp.swiftclient.lyrics.SubmitTextDisplay;
+import net.swiftsmp.swiftclient.lyrics.WorldLyrics;
 import net.swiftsmp.swiftclient.ui.SwiftMenuScreen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +36,11 @@ public final class SwiftClientMod implements ClientModInitializer {
 	private static KeyMapping menuKey;
 	private static KeyMapping zoomKey;
 	private static KeyMapping hudKey;
+	private static KeyMapping lyricsKey;
+	private static KeyMapping mediaPrevKey;
+	private static KeyMapping mediaPlayKey;
+	private static KeyMapping mediaNextKey;
+	private static int lyricsDebugTicks;
 
 	@Override
 	public void onInitializeClient() {
@@ -47,6 +57,14 @@ public final class SwiftClientMod implements ClientModInitializer {
 		menuKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.swiftclient.menu", InputConstants.KEY_RSHIFT, category));
 		zoomKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.swiftclient.zoom", InputConstants.KEY_C, category));
 		hudKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.swiftclient.hud", InputConstants.KEY_F6, category));
+		lyricsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.swiftclient.lyrics", InputConstants.KEY_F7, category));
+		mediaPrevKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.swiftclient.mediaPrev", InputConstants.UNKNOWN.getValue(), category));
+		mediaPlayKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.swiftclient.mediaPlay", InputConstants.UNKNOWN.getValue(), category));
+		mediaNextKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.swiftclient.mediaNext", InputConstants.UNKNOWN.getValue(), category));
+		LyricsService.init();
+		SubmitTextDisplay worldLyrics = new SubmitTextDisplay();
+		WorldLyrics.init(worldLyrics);
+		LevelRenderEvents.COLLECT_SUBMITS.register(worldLyrics::render);
 
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(MOD_ID, "hud"), HudRenderer::render);
 		// Visibility tab: vanilla HUD parts the player can hide.
@@ -70,7 +88,31 @@ public final class SwiftClientMod implements ClientModInitializer {
 				SwiftConfig.get().hudVisible = !SwiftConfig.get().hudVisible;
 				SwiftConfig.save();
 			}
+			while (lyricsKey.consumeClick()) {
+				SwiftConfig.get().lyricsEnabled = !SwiftConfig.get().lyricsEnabled;
+				SwiftConfig.save();
+			}
+			while (mediaPrevKey.consumeClick()) LyricsService.get().command("prev");
+			while (mediaPlayKey.consumeClick()) LyricsService.get().command("toggle");
+			while (mediaNextKey.consumeClick()) LyricsService.get().command("next");
+			SwiftConfig config = SwiftConfig.get();
+			LyricsService.get().tick(config.lyricsEnabled);
+			WorldLyrics.get().tick();
+
+			// Dev/test hook: -Dswiftclient.debug=lyrics enables the sky lyrics for testing.
+			// It must never change the camera or player controls.
+			String debug = System.getProperty("swiftclient.debug", "");
+			if (debug.contains("lyrics") && ++lyricsDebugTicks == 60) {
+				SwiftConfig.get().lyricsEnabled = true;
+				SwiftConfig.save();
+			}
+
+			// Some Singleplayer exits set a fresh vanilla title directly; never let it show.
+			if (Compat.screen() instanceof net.minecraft.client.gui.screens.TitleScreen) {
+				Compat.setScreen(new net.swiftsmp.swiftclient.ui.SwiftTitleScreen());
+			}
 			Tweaks.tick(client);
+			SwiftBoost.tick(client);
 			debugTick(client);
 		});
 

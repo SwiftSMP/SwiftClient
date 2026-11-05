@@ -2,5 +2,9 @@
   "key.category.swiftclient.swiftclient": "SwiftClient",
   "key.swiftclient.menu": "Open SwiftClient menu",
   "key.swiftclient.zoom": "Zoom",
-  "key.swiftclient.hud": "Show/hide SwiftClient HUD"
+  "key.swiftclient.hud": "Show/hide SwiftClient HUD",
+  "key.swiftclient.lyrics": "Show/hide lyrics",
+  "key.swiftclient.mediaPrev": "Previous track",
+  "key.swiftclient.mediaPlay": "Play/pause music",
+  "key.swiftclient.mediaNext": "Next track"
 }

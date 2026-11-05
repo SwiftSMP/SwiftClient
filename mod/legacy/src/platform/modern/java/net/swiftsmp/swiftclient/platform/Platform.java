@@ -30,8 +30,24 @@ public final class Platform {
 		Minecraft.getInstance().setScreen(screen);
 	}
 
+	public static Style sansStyle() {
+		return Ids.sansStyle();
+	}
+
+	public static Style sansLargeStyle() {
+		return Ids.sansLargeStyle();
+	}
+
 	public static Style pixelStyle() {
 		return Ids.pixelStyle();
+	}
+
+	public static Style pixelLargeStyle() {
+		return Ids.pixelLargeStyle();
+	}
+
+	public static Style numStyle() {
+		return Ids.numStyle();
 	}
 
 	public static boolean isKeyDown(int key) {
@@ -44,6 +60,10 @@ public final class Platform {
 
 	public static Object registerCapeTexture(String capeId, NativeImage image) {
 		return Ids.registerCape(capeId, image);
+	}
+
+	public static void ensureSplash() {
+		Ids.splash();
 	}
 
 	public static PlayerSkin withCape(PlayerSkin skin, Object cape) {

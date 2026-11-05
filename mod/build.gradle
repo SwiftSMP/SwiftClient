@@ -10,6 +10,14 @@ dependencies {
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
+// Lyrics engine and now-playing bridge are shared with the 1.21.x builds.
+sourceSets {
+	main {
+		java { srcDirs = ['src/main/java', 'shared/java'] }
+		resources { srcDirs = ['src/main/resources', 'shared/resources'] }
+	}
+}
+
 processResources {
 	def props = [version: project.version, minecraft_version: project.minecraft_version]
 	inputs.properties props
@@ -20,6 +28,25 @@ tasks.withType(JavaCompile).configureEach { it.options.release = 25 }
 java {
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
+}
+
+// `./gradlew runClient -PlyricsTest` turns the sky lyrics on in the LyricsTest world, so they
+// can be checked without a music player. Add `-PnowPlaying=<file>` to read a fixed now-playing
+// JSON instead of the Windows media session (used by _scratch/nowplaying-fixed.js).
+loom {
+	runs {
+		client {
+			if (project.hasProperty('lyricsTest')) {
+				vmArg '-Dswiftclient.debug=lyrics'
+				programArg '--quickPlaySingleplayer'
+				programArg 'LyricsTest'
+			}
+			if (project.hasProperty('nowPlaying')) {
+				vmArg "-Dswiftclient.nowPlayingPath=${project.property('nowPlaying')}"
+				vmArg '-Dswiftclient.noMediaBridge=true'
+			}
+		}
+	}
 }
 
 // Copies the built jar to dist/ and records it in dist/index.json, which the launcher

@@ -3,121 +3,341 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SwiftClient · The free SwiftSMP Minecraft launcher</title>
-  <meta name="description" content="SwiftClient is a free Minecraft: Java Edition launcher for Windows and Android. More FPS out of the box, capes everyone can see, your own Fabric mods, friends and one-click SwiftSMP.">
+  <title>SwiftClient – Free Minecraft Client for Windows &amp; Android</title>
+  <meta name="description" content="Free Minecraft: Java Edition client with more FPS, capes everyone can see, Fabric and HUD mods, friends and one-click SwiftSMP. Download for Windows or Android.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta name="theme-color" content="#0D1020">
   <link rel="canonical" href="https://swiftclient.swiftsmp.net/">
-  <link rel="icon" type="image/png" href="assets/img/favicon.png">
-  <link rel="apple-touch-icon" href="assets/img/icon-256.png">
+  <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+  <link rel="apple-touch-icon" href="/assets/img/icon-256.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://capes.swiftsmp.com">
+  <link rel="dns-prefetch" href="https://assets.mcasset.cloud">
+  <link rel="dns-prefetch" href="https://mc-heads.net">
+  <link rel="dns-prefetch" href="https://swiftsmp.com">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="SwiftClient">
-  <meta property="og:title" content="SwiftClient · The free SwiftSMP Minecraft launcher">
-  <meta property="og:description" content="More FPS, capes everyone can see, your own Fabric mods and friends. Now on the Microsoft Store and Android.">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="SwiftClient – Free Minecraft Client for Windows &amp; Android">
+  <meta property="og:description" content="More FPS, capes everyone sees, Fabric and HUD mods, friends and one-click SwiftSMP. Free for Windows and Android.">
   <meta property="og:url" content="https://swiftclient.swiftsmp.net/">
   <meta property="og:image" content="https://swiftclient.swiftsmp.net/assets/img/og.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="SwiftClient title screen in Minecraft with the SwiftSMP and partner servers">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="preload" href="assets/fonts/PixelifySans.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="styles.css">
+  <meta name="twitter:title" content="SwiftClient – Free Minecraft Client for Windows &amp; Android">
+  <meta name="twitter:description" content="More FPS, capes everyone sees, Fabric and HUD mods, friends and one-click SwiftSMP. Free for Windows and Android.">
+  <meta name="twitter:image" content="https://swiftclient.swiftsmp.net/assets/img/og.jpg">
+  <meta name="twitter:image:alt" content="SwiftClient title screen in Minecraft with the SwiftSMP and partner servers">
+  <link rel="preload" href="/assets/fonts/PixelifySans.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/assets/img/ingame-title.webp" as="image" fetchpriority="high">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <link rel="stylesheet" href="/styles.css">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"SwiftClient","operatingSystem":"Windows 10, Windows 11, Android","applicationCategory":"GameApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://swiftclient.swiftsmp.net/","publisher":{"@type":"Organization","name":"SwiftSMP"}}
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://swiftclient.swiftsmp.net/#website",
+        "name": "SwiftClient",
+        "alternateName": ["Swift Client", "SwiftClient Minecraft"],
+        "url": "https://swiftclient.swiftsmp.net/",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://swiftsmp.com/#org" }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://swiftsmp.com/#org",
+        "name": "SwiftSMP",
+        "url": "https://swiftsmp.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://swiftclient.swiftsmp.net/assets/img/icon-256.png",
+          "width": 256,
+          "height": 256
+        },
+        "email": "swiftsmpdotnet@gmail.com",
+        "sameAs": ["https://discord.swiftsmp.net", "https://github.com/SwiftSMP"]
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://swiftclient.swiftsmp.net/#webpage",
+        "url": "https://swiftclient.swiftsmp.net/",
+        "name": "SwiftClient – Free Minecraft Client for Windows & Android",
+        "description": "Free Minecraft: Java Edition client with more FPS, capes everyone can see, Fabric and HUD mods, friends and one-click SwiftSMP.",
+        "isPartOf": { "@id": "https://swiftclient.swiftsmp.net/#website" },
+        "about": { "@id": "https://swiftclient.swiftsmp.net/#app" },
+        "primaryImageOfPage": {
+          "@type": "ImageObject",
+          "url": "https://swiftclient.swiftsmp.net/assets/img/og.jpg",
+          "width": 1200,
+          "height": 630
+        },
+        "datePublished": "2026-10-28",
+        "dateModified": "2026-11-05",
+        "inLanguage": "en"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://swiftclient.swiftsmp.net/#app",
+        "name": "SwiftClient",
+        "alternateName": ["Swift Client", "SwiftClient Minecraft"],
+        "description": "Free Minecraft: Java Edition client and launcher with performance mods, capes, Fabric mod manager, HUD mods, friends and direct messages.",
+        "applicationCategory": "GameApplication",
+        "applicationSubCategory": "Minecraft launcher",
+        "operatingSystem": "Windows 10, Windows 11, Android 8+",
+        "softwareRequirements": "A Microsoft account that owns Minecraft: Java Edition",
+        "url": "https://swiftclient.swiftsmp.net/",
+        "downloadUrl": "https://apps.microsoft.com/detail/9P118N2JM63C",
+        "installUrl": "https://apps.microsoft.com/detail/9P118N2JM63C",
+        "image": "https://swiftclient.swiftsmp.net/assets/img/og.jpg",
+        "screenshot": [
+          {
+            "@type": "ImageObject",
+            "url": "https://swiftclient.swiftsmp.net/assets/img/ingame-title.webp",
+            "width": 1280,
+            "height": 720,
+            "caption": "SwiftClient title screen in Minecraft 26.3"
+          },
+          {
+            "@type": "ImageObject",
+            "url": "https://swiftclient.swiftsmp.net/assets/img/ingame-mods.webp",
+            "width": 1280,
+            "height": 720,
+            "caption": "SwiftClient Right Shift menu with HUD mods"
+          },
+          {
+            "@type": "ImageObject",
+            "url": "https://swiftclient.swiftsmp.net/assets/img/launcher-play.webp",
+            "width": 1366,
+            "height": 768,
+            "caption": "SwiftClient launcher Play screen"
+          },
+          {
+            "@type": "ImageObject",
+            "url": "https://swiftclient.swiftsmp.net/assets/img/android-play.webp",
+            "width": 540,
+            "height": 1045,
+            "caption": "SwiftClient for Android Play tab"
+          }
+        ],
+        "featureList": [
+          "Performance mods installed automatically",
+          "Capes every SwiftClient player can see",
+          "Fabric mod manager with version and conflict checks",
+          "HUD mods for FPS, CPS, ping, coordinates and keystrokes",
+          "Synced sky lyrics that follow Spotify, Apple Music and YouTube",
+          "Friends and direct messages",
+          "Minecraft: Java Edition on Windows and Android"
+        ],
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "isAccessibleForFree": true,
+        "inLanguage": "en",
+        "sameAs": [
+          "https://github.com/SwiftSMP/SwiftClient",
+          "https://github.com/SwiftSMP/SwiftClient-Android"
+        ],
+        "publisher": { "@id": "https://swiftsmp.com/#org" }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://swiftclient.swiftsmp.net/#faq",
+        "inLanguage": "en",
+        "mainEntity": [
+          { "@type": "Question", "name": "Is SwiftClient free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, completely. No ads and no paywalled features." } },
+          { "@type": "Question", "name": "Do I need to own Minecraft?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. SwiftClient signs in with your Microsoft account and launches the official Minecraft: Java Edition. There is no offline or cracked mode." } },
+          { "@type": "Question", "name": "Store version or .exe?", "acceptedAnswer": { "@type": "Answer", "text": "Both are the same launcher. The Microsoft Store version installs and updates through the Store with no SmartScreen warning. The .exe updates itself from GitHub. They are separate installs with separate game folders." } },
+          { "@type": "Question", "name": "Which Minecraft versions work?", "acceptedAnswer": { "@type": "Answer", "text": "Every release from 1.21 up to the newest one Fabric supports, currently 26.3. Pick the version on the Play screen." } },
+          { "@type": "Question", "name": "Does it work on Android?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. SwiftClient for Android is a full Java Edition launcher with touch controls, a phone performance pack and one-tap SwiftClient setup. Discord presence is Windows-only." } },
+          { "@type": "Question", "name": "Is it safe? Will I get banned?", "acceptedAnswer": { "@type": "Answer", "text": "SwiftClient adds visual and performance mods only and has no cheats, so servers that allow Fabric clients allow SwiftClient. You sign in on Microsoft's own page and your password never touches SwiftClient." } },
+          { "@type": "Question", "name": "How do I get a cape?", "acceptedAnswer": { "@type": "Answer", "text": "Open the Cloaks tab in the launcher and pick one. Every SwiftClient player sees it in game and on your elytra." } },
+          { "@type": "Question", "name": "What are the sky lyrics?", "acceptedAnswer": { "@type": "Answer", "text": "Press F7 in game and the words of whatever is playing on your PC (Spotify, Apple Music, YouTube Music or a browser) float in the sky in time with the song, with a now-playing pill up top. On Android it reads the phone's active media session once you allow music access. Only the song title and artist are sent to the free LRCLIB service, and results are cached on your machine." } },
+          { "@type": "Question", "name": "Can I use my own Fabric mods?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Drop Fabric mods into the Mods tab. SwiftClient checks each one for Minecraft version, conflicts and missing dependencies before you launch." } },
+          { "@type": "Question", "name": "Do I need to install Java or Fabric?", "acceptedAnswer": { "@type": "Answer", "text": "No. SwiftClient installs the right Java runtime, Fabric loader and Fabric API for the Minecraft version you pick." } },
+          { "@type": "Question", "name": "Mac or Linux?", "acceptedAnswer": { "@type": "Answer", "text": "Not yet. Windows 10/11 and Android for now." } }
+        ]
+      }
+    ]
+  }
   </script>
 </head>
 <body>
-  <header class="nav">
-    <div class="shell nav-in">
-      <a class="brand" href="#top" aria-label="SwiftClient home">
-        <img class="px" src="assets/img/logo.png" alt="" width="34" height="34">
-        <span>Swift<b>Client</b></span>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav-wrap">
+    <nav class="nav" aria-label="Main">
+      <div class="nav-side nav-left" id="navLinks">
+        <a class="nav-link active" href="/"><i class="fa-solid fa-house"></i> Home</a>
+        <a class="nav-link" href="/#features"><i class="fa-solid fa-bolt"></i> Features</a>
+        <a class="nav-link" href="/android/"><i class="fa-brands fa-android"></i> Android</a>
+        <a class="nav-link" href="/#faq"><i class="fa-solid fa-circle-question"></i> FAQ</a>
+      </div>
+      <a class="brand" href="/" aria-label="SwiftClient home">
+        <img src="/assets/img/logo.png" alt="" width="42" height="42">
+        <span class="brand-word">Swift<b>Client</b></span>
       </a>
-      <nav class="links" aria-label="Sections">
-        <a href="#features">Features</a>
-        <a href="#screens">Screenshots</a>
-        <a href="#android">Android</a>
-        <a href="#servers">Servers</a>
-        <a href="#faq">FAQ</a>
-      </nav>
-      <a class="btn btn-sm btn-orange" href="#download">Download</a>
-    </div>
+      <div class="nav-side nav-right">
+        <a class="nav-link" href="https://swiftsmp.com"><i class="fa-solid fa-globe"></i> SwiftSMP</a>
+        <a class="nav-link" href="https://discord.swiftsmp.net"><i class="fa-brands fa-discord"></i> Discord</a>
+        <button class="nav-burger" aria-label="Menu" aria-expanded="false" aria-controls="navLinks"><i class="fa-solid fa-bars"></i></button>
+        <a class="play-btn" href="/download/" aria-label="Download SwiftClient"><i class="fa-solid fa-download"></i><span>Download</span></a>
+      </div>
+    </nav>
   </header>
 
-  <main id="top">
+  <main id="main">
     <section class="hero">
       <div class="shell hero-in">
-        <div class="hero-copy">
-          <span class="pill"><span class="dot"></span> Now on the Microsoft Store</span>
-          <h1>The free SwiftSMP launcher for <em>Minecraft: Java Edition</em></h1>
-          <p class="lead">More FPS out of the box, SwiftClient capes everyone can see, your own Fabric mods,
-            friends and chat, and one click to SwiftSMP. On Windows, and now on Android.</p>
-          <div class="cta" id="download">
+        <div>
+          <div class="chips">
+            <span class="chip live"><span class="dot"></span><span id="heroOnline">Players online now</span></span>
+            <span class="chip hot"><i class="fa-brands fa-microsoft"></i> Now on the Microsoft Store</span>
+            <span class="chip"><i class="fa-brands fa-android"></i> New: Android</span>
+          </div>
+          <h1>Swift<b>Client</b> <span class="tag">The free Minecraft client that just runs faster.</span></h1>
+          <p class="lead">More FPS out of the box, capes every SwiftClient player can see, your own Fabric mods, HUD mods, friends and chat, and one click to SwiftSMP. Minecraft: Java Edition on Windows and Android.</p>
+          <div class="cta">
             <a class="store-badge" href="https://apps.microsoft.com/detail/9P118N2JM63C?mode=direct" target="_blank" rel="noopener">
-              <img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft" width="200" height="72">
+              <img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get SwiftClient from the Microsoft Store" width="200" height="72">
             </a>
-            <a class="btn btn-ghost" href="https://github.com/SwiftSMP/SwiftClient/releases/latest/download/SwiftClient-Setup.exe">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10 4.5v7H3zm0 13 7 1v-7H3zm8-14.1L21 3v8.5H11zm0 15.2L21 21v-8.5H11z"/></svg>
-              Windows .exe
+            <a class="btn big primary" href="https://github.com/SwiftSMP/SwiftClient/releases/latest/download/SwiftClient-Setup.exe">
+              <i class="fa-brands fa-windows"></i><span class="two">Download for Windows<small>SwiftClient-Setup.exe</small></span>
             </a>
-            <a class="btn btn-ghost" href="downloads/SwiftClient.apk">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18a1 1 0 0 0 1 1h1v3.5a1.5 1.5 0 0 0 3 0V19h2v3.5a1.5 1.5 0 0 0 3 0V19h1a1 1 0 0 0 1-1V8H6zM3.5 8A1.5 1.5 0 0 0 2 9.5v7a1.5 1.5 0 0 0 3 0v-7A1.5 1.5 0 0 0 3.5 8m17 0A1.5 1.5 0 0 0 19 9.5v7a1.5 1.5 0 0 0 3 0v-7A1.5 1.5 0 0 0 20.5 8M15.5 2.2l1.3-1.3-.5-.5-1.5 1.5A6 6 0 0 0 12 1.2a6 6 0 0 0-2.8.7L7.7.4l-.5.5 1.3 1.3A5.9 5.9 0 0 0 6 7h12a5.9 5.9 0 0 0-2.5-4.8M10 5H9V4h1zm5 0h-1V4h1z"/></svg>
-              Android .apk
+            <a class="btn big" href="/android/">
+              <i class="fa-brands fa-android"></i><span class="two">Android<small>Java Edition on your phone</small></span>
             </a>
           </div>
-          <p class="fine">Free. Needs a Minecraft: Java Edition account. Windows 10/11 · Android 8+</p>
+          <div class="platforms">
+            <span><i class="fa-solid fa-check"></i> 100% free</span>
+            <span><i class="fa-brands fa-windows"></i> Windows 10 / 11</span>
+            <span><i class="fa-brands fa-android"></i> Android 8+</span>
+            <span><i class="fa-solid fa-cube"></i> Minecraft 1.21 → 26.3</span>
+          </div>
         </div>
-        <div class="hero-art">
+        <div class="stage">
           <div class="glow"></div>
-          <img class="px float" src="assets/img/icon-256.png" alt="SwiftClient logo" width="256" height="256">
+          <img class="floaty a" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/nether_star.png" alt="" width="54" height="54">
+          <img class="floaty b" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/elytra.png" alt="" width="44" height="44">
+          <img class="floaty c" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/ender_pearl.png" alt="" width="46" height="46">
+          <div class="screen"><img src="/assets/img/ingame-title.webp" alt="SwiftClient title screen in Minecraft with Join SwiftSMP button" width="1280" height="720" fetchpriority="high"></div>
+          <div class="phone-mini"><img src="/assets/img/android-play.webp" alt="SwiftClient for Android" width="540" height="1045"></div>
         </div>
       </div>
       <div class="shell">
-        <div class="stats" aria-live="polite">
-          <div class="stat"><span class="num" id="stOnline">–</span><span>SwiftClient players online</span></div>
-          <div class="stat"><span class="num" id="stUsers">–</span><span>installs</span></div>
-          <div class="stat"><span class="num">1.21 → 26.3</span><span>Minecraft versions</span></div>
-          <div class="stat"><span class="num">0 €</span><span>forever free</span></div>
+        <div class="stats-row" aria-live="polite">
+          <div class="stat"><b id="stOnline">–</b><span>SwiftClient players online</span></div>
+          <div class="stat"><b id="stUsers">–</b><span>SwiftClient installs</span></div>
+          <div class="stat"><b id="stSmp">–</b><span>playing on SwiftSMP now</span><div class="heads" id="smpHeads"></div></div>
+          <div class="stat"><b>0 €</b><span>forever free, no ads</span></div>
         </div>
       </div>
     </section>
 
     <section class="sec" id="features">
       <div class="shell">
-        <p class="eyebrow">Why SwiftClient</p>
-        <h2>Everything you want, nothing you have to set up</h2>
-        <div class="grid">
-          <article class="card"><div class="ico">⚡</div><h3>More FPS, instantly</h3>
-            <p>Sodium, Lithium, FerriteCore, ImmediatelyFast, EntityCulling and more, installed for your version automatically with tuned Java flags.</p></article>
-          <article class="card"><div class="ico">🧣</div><h3>Capes everyone sees</h3>
-            <p>Pick a SwiftClient cape and every other SwiftClient player sees it on you, in game and on your elytra.</p></article>
-          <article class="card"><div class="ico">🧩</div><h3>Your own mods</h3>
-            <p>Drop in Fabric jars. Each one is checked for the right version, conflicts and missing dependencies before you play.</p></article>
-          <article class="card"><div class="ico">👥</div><h3>Friends and chat</h3>
-            <p>Add friends by Minecraft name and message them right from the launcher, verified through Mojang.</p></article>
-          <article class="card"><div class="ico">🖥️</div><h3>Custom in-game UI</h3>
-            <p>A new title screen, Right Shift menu, movable HUD mods: FPS, CPS, keystrokes, armor, coordinates, zoom and more.</p></article>
-          <article class="card"><div class="ico">🛡️</div><h3>Safe by design</h3>
-            <p>Microsoft sign-in on Microsoft's own page. Minecraft, Java and mods come from Mojang and Modrinth, checked against their hashes.</p></article>
+        <div class="sec-head">
+          <span class="eyebrow"><i class="fa-solid fa-bolt"></i> Why SwiftClient</span>
+          <h2>Everything you want. <b>Nothing</b> to set up.</h2>
+          <p>Install, sign in with Microsoft, press Play. SwiftClient downloads Minecraft, Java, Fabric and a tuned mod set for your version, then gets out of your way.</p>
+        </div>
+        <div class="tiles">
+          <article class="tile wide f-orange">
+            <div><span class="k">Performance</span><h3>More FPS out of the box</h3>
+              <p>Sodium, Lithium, FerriteCore, ImmediatelyFast, EntityCulling, ModernFix and more, picked for your exact version, plus Java flags tuned for short pauses. SwiftBoost holds your FPS target automatically.</p></div>
+            <span class="bignum">FPS ↑</span>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/sugar.png" alt="" loading="lazy">
+          </article>
+          <article class="tile wide f-gold">
+            <div><span class="k">Cosmetics</span><h3>Capes everyone sees</h3>
+              <p>Pick a SwiftClient cape and every SwiftClient player sees it on you, in game and on your elytra. Partner and event capes too.</p></div>
+            <div class="capes-strip" id="capeStrip" aria-hidden="true"></div>
+          </article>
+          <article class="tile"><div><span class="k">Mods</span><h3>Your own mods</h3><p>Drop in Fabric jars. Each one is checked for version, conflicts and missing dependencies.</p></div>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/name_tag.png" alt="" loading="lazy"></article>
+          <article class="tile"><div><span class="k">HUD</span><h3>HUD mods</h3><p>FPS, CPS, ping, coordinates, keystrokes, armor, clock. Drag them anywhere.</p></div>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/clock_00.png" alt="" loading="lazy"></article>
+          <article class="tile"><div><span class="k">Music</span><h3>Sky lyrics</h3><p>Synced words float in the sky while your music plays. Works with Spotify, Apple Music, YouTube Music and browsers, with a now-playing pill up top. Press F7 to switch it on.</p></div>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/music_disc_13.png" alt="" loading="lazy"></article>
+          <article class="tile"><div><span class="k">Social</span><h3>Friends &amp; chat</h3><p>Add friends by Minecraft name and message them from the launcher.</p></div>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/writable_book.png" alt="" loading="lazy"></article>
+          <article class="tile"><div><span class="k">Servers</span><h3>One-click SwiftSMP</h3><p>Join SwiftSMP and partner servers straight from the title screen.</p></div>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/compass_00.png" alt="" loading="lazy"></article>
+          <article class="tile"><div><span class="k">In game</span><h3>Right Shift menu</h3><p>Toggle mods, hide HUD parts, auto sprint, bright mode and zoom (C).</p></div>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/spyglass.png" alt="" loading="lazy"></article>
+          <article class="tile"><div><span class="k">Safety</span><h3>Safe sign-in</h3><p>Sign in on Microsoft's own page. Downloads come from Mojang and Modrinth, hash-checked.</p></div>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/totem_of_undying.png" alt="" loading="lazy"></article>
+          <article class="tile"><div><span class="k">Discord</span><h3>Rich Presence</h3><p>“Playing on swiftsmp.net” on your Discord profile, automatically.</p></div>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/block/note_block.png" alt="" loading="lazy"></article>
+          <article class="tile"><div><span class="k">Updates</span><h3>Always up to date</h3><p>Updates itself in the background. New Minecraft versions land fast.</p></div>
+            <img class="deco" src="https://assets.mcasset.cloud/26.2/assets/minecraft/textures/item/experience_bottle.png" alt="" loading="lazy"></article>
         </div>
       </div>
     </section>
 
     <section class="sec" id="screens">
       <div class="shell">
-        <p class="eyebrow">Take a look</p>
-        <h2>Launcher and in game</h2>
+        <div class="sec-head">
+          <span class="eyebrow"><i class="fa-solid fa-image"></i> See it</span>
+          <h2>Built to feel <b>good</b></h2>
+          <p>Real screenshots from SwiftClient 1.4 on Minecraft 26.3.</p>
+        </div>
         <div class="tabs" role="tablist">
-          <button role="tab" aria-selected="true" data-set="launcher">Launcher</button>
-          <button role="tab" aria-selected="false" data-set="ingame">In game</button>
+          <button role="tab" aria-selected="true" data-set="game">In game</button>
+          <button role="tab" aria-selected="false" data-set="launcher">Launcher</button>
         </div>
-        <div class="gallery" data-set="launcher">
-          <figure class="shot big"><img loading="lazy" src="assets/img/launcher-play.webp" alt="SwiftClient launcher Play screen" width="1366" height="768"></figure>
-          <figure class="shot"><img loading="lazy" src="assets/img/launcher-servers.webp" alt="Servers screen with SwiftSMP and partners" width="1366" height="768"></figure>
-          <figure class="shot"><img loading="lazy" src="assets/img/launcher-cloaks.webp" alt="Cape picker" width="1366" height="768"></figure>
-          <figure class="shot"><img loading="lazy" src="assets/img/launcher-mods.webp" alt="Mod manager" width="1366" height="768"></figure>
+        <div class="show" data-set="game">
+          <figure class="main"><img src="/assets/img/ingame-mods.webp" alt="SwiftClient Right Shift menu with HUD mods" width="1280" height="720" loading="lazy"><figcaption>Right Shift menu · HUD mods</figcaption></figure>
+          <div class="thumbs">
+            <button class="thumb" aria-current="true" data-src="/assets/img/ingame-mods.webp" data-cap="Right Shift menu · HUD mods"><img src="/assets/img/ingame-mods.webp" alt="" loading="lazy"><span><b>Mod menu</b><span>Every HUD mod, one tap to switch.</span></span></button>
+            <button class="thumb" data-src="/assets/img/ingame-boost.webp" data-cap="SwiftBoost · adaptive performance"><img src="/assets/img/ingame-boost.webp" alt="" loading="lazy"><span><b>SwiftBoost</b><span>Holds your FPS target for you.</span></span></button>
+            <button class="thumb" data-src="/assets/img/ingame-editor.webp" data-cap="HUD editor · drag, scroll to resize"><img src="/assets/img/ingame-editor.webp" alt="" loading="lazy"><span><b>HUD editor</b><span>Drag, resize and snap anything.</span></span></button>
+            <button class="thumb" data-src="/assets/img/ingame-hud.webp" data-cap="In game · FPS, CPS, ping, keystrokes"><img src="/assets/img/ingame-hud.webp" alt="" loading="lazy"><span><b>In game</b><span>Clean HUD, hundreds of FPS.</span></span></button>
+            <button class="thumb" data-src="/assets/img/ingame-home.webp" data-cap="Menu home · quick settings"><img src="/assets/img/ingame-home.webp" alt="" loading="lazy"><span><b>Quick settings</b><span>FPS, ping and toggles at a glance.</span></span></button>
+          </div>
         </div>
-        <div class="gallery" data-set="ingame" hidden>
-          <figure class="shot big"><img loading="lazy" src="assets/img/ingame-title.webp" alt="SwiftClient title screen" width="1296" height="759"></figure>
-          <figure class="shot"><img loading="lazy" src="assets/img/ingame-menu.webp" alt="Right Shift mod menu" width="1296" height="759"></figure>
-          <figure class="shot"><img loading="lazy" src="assets/img/ingame-hud.webp" alt="HUD editor" width="1296" height="759"></figure>
-          <figure class="shot"><img loading="lazy" src="assets/img/ingame-cape.webp" alt="Cape and HUD in game" width="1296" height="759"></figure>
+        <div class="show" data-set="launcher" hidden>
+          <figure class="main"><img src="/assets/img/launcher-play.webp" alt="SwiftClient launcher Play screen" width="1366" height="768" loading="lazy"><figcaption>Play · pick a version, press Play</figcaption></figure>
+          <div class="thumbs">
+            <button class="thumb" aria-current="true" data-src="/assets/img/launcher-play.webp" data-cap="Play · pick a version, press Play"><img src="/assets/img/launcher-play.webp" alt="" loading="lazy"><span><b>Play</b><span>Live player counts, one button.</span></span></button>
+            <button class="thumb" data-src="/assets/img/launcher-servers.webp" data-cap="Servers · SwiftSMP and partners"><img src="/assets/img/launcher-servers.webp" alt="" loading="lazy"><span><b>Servers</b><span>SwiftSMP and partners, pinned.</span></span></button>
+            <button class="thumb" data-src="/assets/img/launcher-cloaks.webp" data-cap="Cloaks · capes everyone sees"><img src="/assets/img/launcher-cloaks.webp" alt="" loading="lazy"><span><b>Cloaks</b><span>Pick the cape you wear.</span></span></button>
+            <button class="thumb" data-src="/assets/img/launcher-mods.webp" data-cap="Mods · drop in your own jars"><img src="/assets/img/launcher-mods.webp" alt="" loading="lazy"><span><b>Mods</b><span>Checked before you play.</span></span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="download">
+      <div class="shell">
+        <div class="sec-head center">
+          <span class="eyebrow"><i class="fa-solid fa-download"></i> Get SwiftClient</span>
+          <h2>Pick your <b>platform</b></h2>
+          <p>Same SwiftClient, same capes and friends, wherever you play.</p>
+        </div>
+        <div class="plat">
+          <div class="plat-card rec">
+            <span class="ribbon">RECOMMENDED</span>
+            <div class="ico"><i class="fa-brands fa-microsoft"></i></div>
+            <h3>Microsoft Store</h3>
+            <ol><li>Open the Store page and click <b>Get</b>.</li><li>Launch SwiftClient and sign in with Microsoft.</li><li>Press <b>Play</b>. Updates come through the Store.</li></ol>
+            <a class="store-badge" href="https://apps.microsoft.com/detail/9P118N2JM63C?mode=direct" target="_blank" rel="noopener"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get SwiftClient from the Microsoft Store" width="200" height="72" loading="lazy"></a>
+          </div>
+          <div class="plat-card">
+            <div class="ico"><i class="fa-brands fa-windows"></i></div>
+            <h3>Windows installer</h3>
+            <ol><li>Download <b>SwiftClient-Setup.exe</b>.</li><li>If SmartScreen appears: <i>More info → Run anyway</i>.</li><li>SwiftClient updates itself from then on.</li></ol>
+            <a class="btn primary" href="https://github.com/SwiftSMP/SwiftClient/releases/latest/download/SwiftClient-Setup.exe"><i class="fa-solid fa-download"></i> Download .exe</a>
+          </div>
+          <div class="plat-card">
+            <div class="ico"><i class="fa-brands fa-android"></i></div>
+            <h3>Android</h3>
+            <ol><li>Download the APK and allow the install.</li><li>Sign in with Microsoft.</li><li>Pick a version and tap <b>Play</b>.</li></ol>
+            <a class="btn primary" href="/downloads/SwiftClient.apk"><i class="fa-solid fa-download"></i> Download APK</a>
+          </div>
         </div>
       </div>
     </section>
@@ -125,87 +345,150 @@
     <section class="sec" id="android">
       <div class="shell split">
         <div>
-          <p class="eyebrow">New · Android</p>
-          <h2>Play Java Edition on your phone with SwiftClient</h2>
-          <p class="lead">SwiftClient for Android is a full Minecraft: Java Edition launcher for your phone, tuned for it:
-            Lithium, FerriteCore, ModernFix and EntityCulling, phone-friendly settings and a GC tuned against stutter.</p>
-          <ol class="steps">
-            <li><b>Install the APK</b> and sign in with your Microsoft account.</li>
-            <li><b>Pick a version and tap Play.</b> Fabric, SwiftClient, Fabric API and a phone performance pack are set up for you.</li>
-            <li><b>Join from the Servers tab</b> straight into SwiftSMP, CyanRealms or ValenMC, and pick your cloak in Cloaks.</li>
-            <li><b>Touch controls built in</b>, plus keyboard, mouse and controller support. Add Right Shift as a button to open the SwiftClient menu.</li>
-          </ol>
-          <div class="cta">
-            <a class="btn btn-orange" href="downloads/SwiftClient.apk">Download the APK</a>
-            <a class="btn btn-ghost" href="https://github.com/SwiftSMP/SwiftClient-Android" target="_blank" rel="noopener">Source code</a>
+          <span class="eyebrow"><i class="fa-brands fa-android"></i> New · Android</span>
+          <h2>Minecraft Java Edition <b>on your phone</b></h2>
+          <p class="lead" style="margin-top:14px">SwiftClient for Android is a full Java Edition launcher tuned for phones. Sign in, tap Play, and you're in with capes, HUD mods and SwiftSMP one tap away.</p>
+          <ul class="ticks">
+            <li><i class="fa-solid fa-check"></i><span><b>One tap:</b> Fabric, SwiftClient, Fabric API and a phone performance pack installed for you.</span></li>
+            <li><i class="fa-solid fa-check"></i><span><b>Phone-tuned:</b> Lithium, FerriteCore, ModernFix and EntityCulling, smart settings and a GC tuned against stutter.</span></li>
+            <li><i class="fa-solid fa-check"></i><span><b>Join from the Servers tab</b> straight into SwiftSMP, CyanRealms or ValenMC.</span></li>
+            <li><i class="fa-solid fa-check"></i><span><b>Touch, keyboard, mouse and controller</b> all supported.</span></li>
+          </ul>
+          <div class="cta" style="margin-top:24px">
+            <a class="btn big primary" href="/downloads/SwiftClient.apk"><i class="fa-solid fa-download"></i> Download APK</a>
+            <a class="btn big" href="/android/">How it works</a>
           </div>
-          <p class="fine">Android 8+, 64-bit phone recommended. Allow “Install unknown apps” for your browser when Android asks. You need your own Minecraft: Java Edition account. Built on the open-source <a href="https://github.com/AngelAuraMC/Amethyst-Android">Amethyst</a> / PojavLauncher.</p>
         </div>
         <div class="phones">
-          <div class="phone"><img src="assets/img/android-play.webp" alt="SwiftClient for Android: Play tab" width="540" height="1045" loading="lazy"></div>
-          <div class="phone back"><img src="assets/img/android-servers.webp" alt="SwiftClient for Android: Servers tab" width="540" height="1045" loading="lazy"></div>
+          <div class="phone"><img src="/assets/img/android-play.webp" alt="SwiftClient for Android Play tab" width="540" height="1045" loading="lazy"></div>
+          <div class="phone back"><img src="/assets/img/android-servers.webp" alt="SwiftClient for Android Servers tab" width="540" height="1045" loading="lazy"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="compare">
+      <div class="shell">
+        <div class="sec-head center">
+          <span class="eyebrow"><i class="fa-solid fa-scale-balanced"></i> Compare</span>
+          <h2>SwiftClient vs the <b>vanilla</b> launcher</h2>
+        </div>
+        <div class="table-scroll">
+          <table class="compare">
+            <thead><tr><th>Feature</th><th class="us">SwiftClient</th><th>Minecraft Launcher</th></tr></thead>
+            <tbody>
+              <tr><td>Performance mods installed for you</td><td class="us y"><i class="fa-solid fa-check"></i></td><td class="n"><i class="fa-solid fa-xmark"></i></td></tr>
+              <tr><td>Capes other players can see</td><td class="us y"><i class="fa-solid fa-check"></i></td><td class="n"><i class="fa-solid fa-xmark"></i></td></tr>
+              <tr><td>Fabric mod manager with checks</td><td class="us y"><i class="fa-solid fa-check"></i></td><td class="n"><i class="fa-solid fa-xmark"></i></td></tr>
+              <tr><td>HUD mods (FPS, CPS, keystrokes…)</td><td class="us y"><i class="fa-solid fa-check"></i></td><td class="n"><i class="fa-solid fa-xmark"></i></td></tr>
+              <tr><td>Friends and direct messages</td><td class="us y"><i class="fa-solid fa-check"></i></td><td class="n"><i class="fa-solid fa-xmark"></i></td></tr>
+              <tr><td>Java Edition on Android</td><td class="us y"><i class="fa-solid fa-check"></i></td><td class="n"><i class="fa-solid fa-xmark"></i></td></tr>
+              <tr><td>Official Microsoft sign-in</td><td class="us y"><i class="fa-solid fa-check"></i></td><td class="y"><i class="fa-solid fa-check"></i></td></tr>
+              <tr><td>Price</td><td class="us"><b>Free</b></td><td>Free</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
 
     <section class="sec" id="servers">
       <div class="shell">
-        <p class="eyebrow">One click to play</p>
-        <h2>SwiftSMP and partners, pinned</h2>
+        <div class="sec-head">
+          <span class="eyebrow"><i class="fa-solid fa-server"></i> One click to play</span>
+          <h2>SwiftSMP and <b>partners</b>, pinned</h2>
+          <p>Asia's crystal PvP and survival server, plus our partner communities. All one click from the SwiftClient title screen.</p>
+        </div>
         <div class="servers">
-          <div class="srv main"><img class="px" src="assets/img/logo.png" alt="" width="56" height="56">
-            <div><h3>SwiftSMP</h3><code class="copy" data-copy="swiftsmp.net">swiftsmp.net</code></div>
+          <div class="srv main"><img src="/assets/img/logo.png" alt="SwiftSMP" width="56" height="56">
+            <div><h3>SwiftSMP</h3><button class="copy" data-copy="swiftsmp.net">swiftsmp.net</button><span class="live-n" id="srvSmp"></span></div>
             <span class="badge">HOME</span></div>
-          <div class="srv"><img class="px" src="assets/img/cyanrealms.png" alt="" width="56" height="56">
-            <div><h3>CyanRealms</h3><code class="copy" data-copy="play.cyanrealms.com">play.cyanrealms.com</code></div>
+          <div class="srv"><img src="/assets/img/cyanrealms.png" alt="CyanRealms" width="56" height="56">
+            <div><h3>CyanRealms</h3><button class="copy" data-copy="play.cyanrealms.com">play.cyanrealms.com</button></div>
             <span class="badge">PARTNER</span></div>
-          <div class="srv"><img class="px" src="assets/img/valenmc.png" alt="" width="56" height="56">
-            <div><h3>ValenMC</h3><code class="copy" data-copy="play.valenmc.fun">play.valenmc.fun</code></div>
+          <div class="srv"><img src="/assets/img/valenmc.png" alt="ValenMC" width="56" height="56">
+            <div><h3>ValenMC</h3><button class="copy" data-copy="play.valenmc.fun">play.valenmc.fun</button></div>
             <span class="badge">PARTNER</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="about">
+      <div class="shell">
+        <div class="sec-head">
+          <span class="eyebrow"><i class="fa-solid fa-circle-info"></i> About</span>
+          <h2>What is <b>SwiftClient</b>?</h2>
+        </div>
+        <div class="prose">
+          <p>SwiftClient is a free Minecraft: Java Edition client and launcher for Windows 10/11 and Android. It installs the right Java runtime, Fabric loader and a tested performance mod pack for the Minecraft version you choose, so you can go from download to playing in a few clicks.</p>
+          <p>Every SwiftClient player sees your cape in game and on your elytra. You also get a HUD editor for FPS, CPS, ping and keystrokes, a Fabric mod manager that checks versions and conflicts, friends and direct messages, and one-click access to SwiftSMP and partner servers. There are no cheats, and sign-in happens on Microsoft's own page, so your password never touches SwiftClient.</p>
+          <p>Ready to play? <a href="/download/">Download SwiftClient for Windows</a>, install the <a href="/android/">Minecraft Java Edition launcher for Android</a>, or read the <a href="/#faq">SwiftClient FAQ</a>.</p>
         </div>
       </div>
     </section>
 
     <section class="sec" id="faq">
-      <div class="shell narrow">
-        <p class="eyebrow">Questions</p>
-        <h2>FAQ</h2>
-        <details><summary>Is SwiftClient free?</summary><p>Yes, completely. No ads and no paywalled features.</p></details>
-        <details><summary>Do I need to own Minecraft?</summary><p>Yes. SwiftClient signs in with your Microsoft account and launches the official Minecraft: Java Edition. There is no offline or cracked mode.</p></details>
-        <details><summary>Store version or .exe?</summary><p>Both are the same launcher. The Microsoft Store version installs and updates through the Store with no SmartScreen warning. The .exe updates itself from GitHub. They are separate installs with separate game folders.</p></details>
-        <details><summary>Which Minecraft versions work?</summary><p>Every release from 1.21 up to the newest one Fabric supports, currently 26.3. Pick the version on the Play screen.</p></details>
-        <details><summary>Does it work on Android?</summary><p>Yes. SwiftClient for Android is a full Java Edition launcher built on Amethyst/PojavLauncher, with touch controls, keyboard, mouse and controller support. Tap Install SwiftClient, pick a version and play. Performance depends on your phone; 1.21.x runs best. Discord presence is Windows-only.</p></details>
-        <details><summary>Is it safe? Will I get banned?</summary><p>SwiftClient is a Fabric mod set with visual and performance mods only. It has no PvP cheats. Servers that allow Fabric clients allow SwiftClient. Your password never touches SwiftClient.</p></details>
-        <details><summary>Does it work on Mac or Linux?</summary><p>Not yet. Windows 10/11 and Android only for now.</p></details>
+      <div class="shell">
+        <div class="sec-head center">
+          <span class="eyebrow"><i class="fa-solid fa-circle-question"></i> Questions</span>
+          <h2>FAQ</h2>
+        </div>
+        <div class="faq">
+          <details><summary>Is SwiftClient free?</summary><p>Yes, completely. No ads and no paywalled features.</p></details>
+          <details><summary>Do I need to own Minecraft?</summary><p>Yes. SwiftClient signs in with your Microsoft account and launches the official Minecraft: Java Edition. There is no offline or cracked mode.</p></details>
+          <details><summary>Store version or .exe?</summary><p>Both are the same launcher. The Microsoft Store version installs and updates through the Store with no SmartScreen warning. The .exe updates itself from GitHub. They are separate installs with separate game folders.</p></details>
+          <details><summary>Which Minecraft versions work?</summary><p>Every release from 1.21 up to the newest one Fabric supports, currently 26.3. Pick the version on the Play screen.</p></details>
+          <details><summary>Does it work on Android?</summary><p>Yes. <a href="/android/" style="color:var(--orange-hi)">SwiftClient for Android</a> is a full Java Edition launcher with touch controls, a phone performance pack and one-tap SwiftClient setup. Discord presence is Windows-only.</p></details>
+          <details><summary>Is it safe? Will I get banned?</summary><p>SwiftClient adds visual and performance mods only and has no cheats, so servers that allow Fabric clients allow SwiftClient. You sign in on Microsoft's own page and your password never touches SwiftClient.</p></details>
+          <details><summary>How do I get a cape?</summary><p>Open the Cloaks tab in the launcher and pick one. Every SwiftClient player sees it in game and on your elytra.</p></details>
+          <details><summary>What are the sky lyrics?</summary><p>Press <b>F7</b> in game and the words of whatever is playing on your PC (Spotify, Apple Music, YouTube Music or a browser) float in the sky in front of you, in time with the song, with a now-playing pill up top. On Android it reads the phone's active media session once you allow music access. Only the song title and artist are sent to the free LRCLIB lyrics service, and results are cached on your machine.</p></details>
+          <details><summary>Can I use my own Fabric mods?</summary><p>Yes. Drop Fabric mods into the Mods tab. SwiftClient checks each one for Minecraft version, conflicts and missing dependencies before you launch.</p></details>
+          <details><summary>Do I need to install Java or Fabric?</summary><p>No. SwiftClient installs the right Java runtime, Fabric loader and Fabric API for the Minecraft version you pick.</p></details>
+          <details><summary>Mac or Linux?</summary><p>Not yet. Windows 10/11 and Android for now.</p></details>
+        </div>
       </div>
     </section>
 
-    <section class="sec final">
-      <div class="shell final-in">
-        <img class="px" src="assets/img/icon-256.png" alt="" width="96" height="96">
-        <h2>Ready to play?</h2>
-        <div class="cta center">
-          <a class="store-badge" href="https://apps.microsoft.com/detail/9P118N2JM63C?mode=direct" target="_blank" rel="noopener">
-            <img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft" width="200" height="72">
-          </a>
-          <a class="btn btn-ghost" href="downloads/SwiftClient.apk">Android .apk</a>
+    <section class="sec" style="padding-top:20px">
+      <div class="shell">
+        <div class="banner">
+          <img src="/assets/img/icon-256.png" alt="" width="84" height="84">
+          <div class="banner-text"><h2>Ready to play <b>faster</b>?</h2><p>Free on Windows and Android. Takes a minute to set up.</p></div>
+          <div class="cta">
+            <a class="btn big primary" href="/download/"><i class="fa-solid fa-download"></i> Download SwiftClient</a>
+            <a class="btn big" href="https://discord.swiftsmp.net"><i class="fa-brands fa-discord"></i> Join Discord</a>
+          </div>
         </div>
       </div>
     </section>
   </main>
 
-  <footer class="foot">
-    <div class="shell foot-in">
-      <div class="brand"><img class="px" src="assets/img/logo.png" alt="" width="26" height="26"><span>Swift<b>Client</b></span></div>
-      <nav>
-        <a href="https://swiftsmp.com">SwiftSMP</a>
-        <a href="https://github.com/SwiftSMP/SwiftClient/releases">Releases</a>
-        <a href="https://apps.microsoft.com/detail/9P118N2JM63C">Microsoft Store</a>
-      </nav>
-      <p class="fine">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.</p>
+  <footer class="footer">
+    <div class="footer-in">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img src="/assets/img/logo.png" alt="" width="36" height="36"><span class="brand-word">Swift<b>Client</b></span></a>
+        <p>The free Minecraft client by SwiftSMP. Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.</p>
+        <a class="footer-email" href="mailto:swiftsmpdotnet@gmail.com"><i class="fa-solid fa-envelope"></i> swiftsmpdotnet@gmail.com</a>
+      </div>
+      <div class="footer-links">
+        <div><h3>SwiftClient</h3>
+          <a href="/download/"><i class="fa-solid fa-download"></i> Download</a>
+          <a href="/android/"><i class="fa-brands fa-android"></i> Android</a>
+          <a href="/#features"><i class="fa-solid fa-bolt"></i> Features</a>
+          <a href="/#about"><i class="fa-solid fa-circle-info"></i> About</a>
+          <a href="/#faq"><i class="fa-solid fa-circle-question"></i> FAQ</a></div>
+        <div><h3>SwiftSMP</h3>
+          <a href="https://swiftsmp.com"><i class="fa-solid fa-globe"></i> Website</a>
+          <a href="https://swiftsmp.com/store"><i class="fa-solid fa-cart-shopping"></i> Store</a>
+          <a href="https://swiftsmp.com/tiers"><i class="fa-solid fa-crown"></i> Tier list</a>
+          <a href="https://discord.swiftsmp.net"><i class="fa-brands fa-discord"></i> Discord</a></div>
+        <div><h3>More</h3>
+          <a href="https://apps.microsoft.com/detail/9P118N2JM63C"><i class="fa-brands fa-microsoft"></i> Microsoft Store</a>
+          <a href="https://github.com/SwiftSMP/SwiftClient/releases"><i class="fa-brands fa-github"></i> Releases</a>
+          <a href="https://github.com/SwiftSMP/SwiftClient-Android"><i class="fa-solid fa-code"></i> Android source</a>
+          <a href="https://swiftsmp.com/privacy"><i class="fa-solid fa-shield-halved"></i> Privacy</a></div>
+      </div>
     </div>
   </footer>
   <div class="toast" id="toast" role="status"></div>
-  <script src="app.js" defer></script>
+  <script src="/app.js" defer></script>
 </body>
 </html>

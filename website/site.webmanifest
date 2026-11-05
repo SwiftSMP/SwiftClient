@@ -1,0 +1,13 @@
+{
+  "id": "/",
+  "name": "SwiftClient",
+  "short_name": "SwiftClient",
+  "description": "The free Minecraft client for Windows and Android.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#0D1020",
+  "theme_color": "#0D1020",
+  "icons": [{ "src": "/assets/img/icon-256.png", "sizes": "256x256", "type": "image/png" }]
+}

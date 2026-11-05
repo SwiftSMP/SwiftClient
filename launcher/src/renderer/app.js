@@ -24,6 +24,7 @@ function notice(msg, kind = '') {
 }
 
 const currentVersion = () => state.settings.version || (state.versions[0] && state.versions[0].id);
+const currentLoader = () => (state.settings && state.settings.loader) || 'fabric';
 
 // ---- window + navigation --------------------------------------------------------
 
@@ -31,13 +32,88 @@ $$('[data-win]').forEach((b) => b.addEventListener('click', () => swift.call(`wi
 $$('[data-folder]').forEach((b) => b.addEventListener('click', () => swift.call('shell:openFolder', b.dataset.folder)));
 
 function show(view) {
-  $$('.nav').forEach((n) => n.classList.toggle('active', n.dataset.view === view));
+  $$('.nav-link').forEach((n) => n.classList.toggle('active', n.dataset.view === view));
   $$('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
-  if (view === 'mods') renderMods();
+  if (view === 'mods') { renderMods(); if (!explore.loaded) loadExplore(); }
+  if (view === 'servers') { setServers(state.info && state.info.servers); refreshStatus(); }
   if (view === 'cosmetics') { renderCapes(); renderAdminCodes(); }
   if (view === 'friends') { renderFriends(); startFriendsPolling(); }
 }
-$$('.nav').forEach((n) => n.addEventListener('click', () => show(n.dataset.view)));
+$$('.nav-link').forEach((n) => n.addEventListener('click', () => show(n.dataset.view)));
+
+// ---- search row ------------------------------------------------------------------
+
+const VIEWS = ['play', 'servers', 'mods', 'cosmetics', 'friends', 'settings'];
+const searchCache = { mods: [], friends: [], capes: [], warmed: false };
+
+// Filled once, on the first time the box is used; the views keep it fresh afterwards.
+async function warmSearch() {
+  if (searchCache.warmed) return;
+  searchCache.warmed = true;
+  const mc = currentVersion();
+  const [mods, social, capes] = await Promise.all([
+    mc ? swift.call('mods:list', mc, currentLoader()).catch(() => []) : Promise.resolve([]),
+    state.account ? swift.call('social:state').catch(() => null) : Promise.resolve(null),
+    state.info && state.info.capesEnabled ? swift.call('capes:catalog').catch(() => null) : Promise.resolve(null),
+  ]);
+  searchCache.mods = mods || [];
+  searchCache.friends = (social && social.friends) || [];
+  searchCache.capes = (capes && capes.capes) || [];
+  if (document.activeElement === $('#globalSearch')) renderSuggest();
+}
+
+function searchMatches(q) {
+  const hit = (s) => s && s.toLowerCase().includes(q);
+  const out = [];
+  for (const v of VIEWS) if (hit(v)) out.push({ kind: 'View', label: v[0].toUpperCase() + v.slice(1), run: () => show(v) });
+  for (const s of (state.info && state.info.servers) || []) {
+    if (s.hidden || !(hit(s.name) || hit(s.address))) continue;
+    out.push({ kind: 'Server', label: s.name, sub: s.address, img: s.icon || 'img/logo.png', run: () => { show('servers'); play(s.address); } });
+  }
+  for (const m of searchCache.mods) if (hit(m.name)) {
+    out.push({ kind: 'Mod', label: m.name, sub: m.enabled ? 'Installed' : 'Installed · off', run: () => show('mods') });
+  }
+  for (const c of searchCache.capes) if (hit(c.name)) {
+    out.push({ kind: 'Cloak', label: c.name, sub: c.owned ? 'Owned' : 'Locked', run: () => show('cosmetics') });
+  }
+  for (const f of searchCache.friends) if (hit(f.name)) {
+    out.push({ kind: 'Friend', label: f.name, sub: f.online ? 'online' : 'offline', run: () => { show('friends'); openChat(f); } });
+  }
+  return out.slice(0, 12);
+}
+
+function hideSuggest() {
+  const list = $('#suggest');
+  list.hidden = true;
+  list.replaceChildren();
+}
+
+let lastHits = [];
+
+function renderSuggest() {
+  const list = $('#suggest');
+  const q = $('#globalSearch').value.trim().toLowerCase();
+  if (!q) { hideSuggest(); return; }
+  lastHits = searchMatches(q);
+  list.replaceChildren(...(lastHits.length
+    ? lastHits.map((h) => el('li', {}, el('button', {
+        type: 'button',
+        onclick: () => { hideSuggest(); $('#globalSearch').value = ''; h.run(); },
+      },
+      h.img ? el('img', { src: h.img, alt: '' }) : '',
+      el('span', { className: 'grow' }, el('b', { textContent: h.label }), h.sub ? el('small', { textContent: h.sub }) : ''),
+      el('span', { className: 'kind', textContent: h.kind }))))
+    : [el('li', { className: 'none', textContent: 'Nothing matches that yet.' })]));
+  list.hidden = false;
+}
+
+$('#globalSearch').addEventListener('input', renderSuggest);
+$('#globalSearch').addEventListener('focus', () => { warmSearch(); renderSuggest(); });
+$('#globalSearch').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { hideSuggest(); e.target.blur(); }
+  if (e.key === 'Enter' && lastHits[0]) { hideSuggest(); e.target.value = ''; lastHits[0].run(); }
+});
+document.addEventListener('click', (e) => { if (!e.target.closest('.player-search')) hideSuggest(); });
 
 // ---- account ---------------------------------------------------------------------
 
@@ -123,14 +199,26 @@ $('#logoutBtn').addEventListener('click', async () => {
 function renderVersions() {
   const sel = $('#versionSelect');
   sel.replaceChildren(...state.versions.map((v, i) => el('option', {
-    value: v.id, textContent: `${v.id}${i === 0 ? '  (latest)' : ''}${v.swiftMod ? '' : '  · no capes'}`,
+    value: v.id, textContent: `${v.id}${i === 0 ? '  (latest)' : ''}${v.swiftMod ? '' : '  · no cloaks'}`,
   })));
   sel.value = currentVersion() || '';
+  $('#loaderSelect').value = currentLoader();
 }
+
+$('#loaderSelect').addEventListener('change', async (e) => {
+  state.settings = await swift.call('settings:set', { loader: e.target.value });
+  explore.loader = currentLoader();
+  explore.loaded = false;
+  $$('#modrinthLoaders .chip').forEach((x) => x.classList.toggle('active', x.dataset.loader === explore.loader));
+  if ($('#view-mods').classList.contains('active')) { renderMods(); loadExplore(); }
+});
 
 $('#versionSelect').addEventListener('change', async (e) => {
   state.settings = await swift.call('settings:set', { version: e.target.value });
   $('#modsVersion').textContent = e.target.value;
+  $('#exploreVersion').textContent = e.target.value;
+  explore.loaded = false;
+  if ($('#view-mods').classList.contains('active')) loadExplore();
 });
 
 function setBusy(busy) {
@@ -139,6 +227,8 @@ function setBusy(busy) {
   $('#playBtn').disabled = off;
   $('#joinBtn').disabled = off;
   $('#versionSelect').disabled = off;
+  $('#loaderSelect').disabled = off;
+  $$('.server-join').forEach((b) => { b.disabled = off; });
   $('#playBtn').textContent = state.running ? 'Playing' : busy ? 'Starting…' : 'Play';
 }
 
@@ -206,7 +296,7 @@ const num = (n) => Number(n).toLocaleString('en-US');
 function setServerStatus(server) {
   const card = $('#serverCard');
   const dot = $('#serverDot');
-  card.classList.remove('off', 'busy');
+  card.classList.remove('off', 'busy', 'on');
   dot.classList.remove('on');
   if (!server) return;
   if (server.offline) {
@@ -215,27 +305,68 @@ function setServerStatus(server) {
     card.classList.add('off');
     return;
   }
+  card.classList.add('on');
   dot.classList.add('on');
   $('#serverOnline').textContent = num(server.players.online);
   $('#serverLabel').replaceChildren(
     document.createTextNode(server.players.max ? `of ${num(server.players.max)} on ` : 'players on '),
     el('span', { className: 'server-name', textContent: state.info.server.name }));
-  card.title = server.motd ? `${server.motd}\n${server.latencyMs} ms` : `${server.latencyMs} ms`;
+  card.title = `${serverPlayers(server)} on ${state.info.server.name}\n${server.latencyMs} ms${server.motd ? `\n${server.motd}` : ''}`;
 }
 
 function setClientStatus(client, downloads) {
   const card = $('#clientCard');
-  card.classList.remove('off', 'busy');
+  card.classList.remove('off', 'busy', 'on');
+  $('#totalDownloads').textContent = downloads == null ? '—' : num(downloads);
+  $('#downloadsCard').title = downloads == null ? 'Total downloads' : `${num(downloads)} total downloads`;
   if (!client) {
     $('#clientCard').classList.add('busy');
     return;
   }
+  card.classList.add('on');
   $('#clientDot').classList.add('on');
+  card.title = `${num(client.online)} SwiftClient players online`;
   $('#clientOnline').textContent = num(client.online);
-  $('#clientLabel').textContent = client.users
-    ? `SwiftClient online · ${num(client.users)} installs`
-    : 'SwiftClient players online';
-  $('#clientDownloads').textContent = downloads == null ? '' : `${num(downloads)} total downloads`;
+  $('#clientLabel').textContent = 'SwiftClient players online';
+}
+
+
+function serverPlayers(s) {
+  if (s.offline) return 'Offline';
+  if (!s.players) return '— players';
+  return s.players.max
+    ? `${num(s.players.online)} / ${num(s.players.max)} players`
+    : `${num(s.players.online)} players`;
+}
+
+function setServers(list) {
+  const box = $('#serverList');
+  if (!box) return;
+  const servers = (list || []).filter((s) => !s.hidden)
+    .sort((a, b) => (a.partner ? 1 : 0) - (b.partner ? 1 : 0));
+  if (!servers.length) {
+    box.replaceChildren(el('div', { className: 'empty', textContent: 'No servers are available right now.' }));
+    return;
+  }
+  box.replaceChildren(...servers.map((s) => {
+    const motd = s.offline ? (s.error || 'Offline right now') : (s.motd || (s.partner ? 'Partner server' : 'The SwiftSMP home server'));
+    const join = el('button', { className: 'btn primary small server-join', textContent: s.partner ? 'Join partner' : 'Join' });
+    join.disabled = state.busy || state.running;
+    join.addEventListener('click', () => play(s.address));
+    return el('article', { className: `server-card wide${s.offline ? ' off' : ''}` },
+      el('div', { className: 'server-card-top' },
+        el('img', { className: 'server-icon', src: s.icon || 'img/logo.png', alt: '' }),
+        el('div', { className: 'server-card-title' },
+          el('div', { className: 'server-name-row' },
+            el('b', { textContent: s.name }),
+            el('span', { className: `tag${s.partner ? ' partner' : ''}`, textContent: s.partner ? 'PARTNER' : 'MAIN' })),
+          el('small', { className: 'server-address', textContent: s.address }))),
+      el('p', { className: 'server-motd', textContent: motd, title: s.motd || '' }),
+      el('div', { className: 'server-meta' },
+        el('span', { className: `server-state${s.offline ? ' off' : ' on'}`, textContent: serverPlayers(s) }),
+        el('span', { className: 'server-latency', textContent: s.offline ? '—' : `${s.latencyMs} ms` })),
+      join);
+  }));
 }
 
 async function refreshStatus() {
@@ -243,21 +374,24 @@ async function refreshStatus() {
     const s = await swift.call('stats:get');
     setServerStatus(s.server);
     setClientStatus(s.client, s.downloads);
+    setServers(s.servers);
   } catch { /* offline: keep the last counts */ }
 }
 
 swift.onStats((s) => setClientStatus(s.client));
 setInterval(refreshStatus, 60000);
 $('#serverCard').addEventListener('click', () => refreshStatus());
+$('#serversRefresh').addEventListener('click', () => refreshStatus());
+$('#partnerTicket').addEventListener('click', () => swift.call('shell:open', 'https://swiftsmp.com'));
 
 // ---- mods ------------------------------------------------------------------------
 
 async function renderMods() {
   const mc = currentVersion();
-  $('#modsVersion').textContent = mc;
+  $('#modsVersion').textContent = `${mc} · ${currentLoader()}`;
   const list = $('#modList');
   let mods = [];
-  try { mods = await swift.call('mods:list', mc); } catch (e) { toast(e.message, true); }
+  try { mods = await swift.call('mods:list', mc, currentLoader()); } catch (e) { toast(e.message, true); }
   if (!mods.length) {
     list.replaceChildren(el('div', { className: 'empty', textContent: 'No mods yet. Built-in mods are installed the first time you press Play.' }));
     return;
@@ -269,12 +403,12 @@ async function renderMods() {
     if (!m.managed) {
       const toggle = el('label', { className: 'check' }, el('input', { type: 'checkbox', checked: m.enabled }), 'On');
       toggle.querySelector('input').addEventListener('change', async (e) => {
-        await swift.call('mods:toggle', mc, m.file, e.target.checked).catch((err) => toast(err.message, true));
+        await swift.call('mods:toggle', mc, m.file, e.target.checked, currentLoader()).catch((err) => toast(err.message, true));
         renderMods();
       });
       const remove = el('button', { className: 'btn small ghost danger', textContent: 'Remove' });
       remove.addEventListener('click', async () => {
-        await swift.call('mods:remove', mc, m.file).catch((err) => toast(err.message, true));
+        await swift.call('mods:remove', mc, m.file, currentLoader()).catch((err) => toast(err.message, true));
         renderMods();
       });
       row.append(toggle, remove);
@@ -286,7 +420,7 @@ async function renderMods() {
 async function importFiles(files) {
   if (!files.length) return;
   const mc = currentVersion();
-  const results = await swift.call('mods:import', mc, files).catch((e) => { toast(e.message, true); return []; });
+  const results = await swift.call('mods:import', mc, files, currentLoader()).catch((e) => { toast(e.message, true); return []; });
   $('#importResults').replaceChildren(...results.map((r) => {
     const name = (r.meta && r.meta.name) || r.file;
     const items = [...(r.problems || []), ...(r.warnings || [])];
@@ -299,42 +433,95 @@ async function importFiles(files) {
 
 $('#importBtn').addEventListener('click', async () => importFiles(await swift.call('mods:pick')));
 
-// ---- Modrinth search ---------------------------------------------------------
+// ---- Modrinth explorer -------------------------------------------------------
 
-async function searchModrinth() {
-  const mc = currentVersion();
-  const query = $('#modrinthQuery').value.trim();
-  const box = $('#modrinthResults');
-  if (query.length < 2) { toast('Type at least two characters to search Modrinth.', true); return; }
-  box.replaceChildren(el('div', { className: 'muted', textContent: 'Searching Modrinth…' }));
-  let hits = [];
-  try { hits = await swift.call('mods:search', mc, query); } catch (e) { toast(e.message, true); box.replaceChildren(); return; }
-  if (!hits.length) {
-    box.replaceChildren(el('div', { className: 'empty', textContent: `No Fabric mods for ${mc} match "${query}".` }));
-    return;
-  }
-  box.replaceChildren(...hits.map((h) => {
-    const install = el('button', { className: 'btn small primary', textContent: 'Install' });
-    install.addEventListener('click', async () => {
-      install.disabled = true;
-      install.textContent = 'Installing…';
-      const r = await swift.call('mods:install', mc, h.slug).catch((e) => ({ ok: false, problems: [e.message] }));
-      toast(r.ok ? `Installed ${r.name} ${r.version}` : (r.problems || ['Could not install']).join(' '), !r.ok);
-      install.disabled = false;
-      install.textContent = 'Install';
-      if (r.ok) renderMods();
-    });
-    return el('div', { className: 'result ok' },
-      el('div', { className: 'grow' },
-        el('b', { textContent: h.title }),
-        el('div', { className: 'muted', textContent: h.description }),
-        el('div', { className: 'ver', textContent: `${h.downloads.toLocaleString()} downloads` })),
-      install);
-  }));
+const explore = { loader: 'fabric', sort: 'downloads', category: '', query: '', offset: 0, hits: [], loaded: false, loading: false };
+
+function exploreBadge(text, accent = false) {
+  return el('span', { className: `badge ${accent ? 'builtin' : 'user'}`, textContent: text });
 }
 
-$('#modrinthSearch').addEventListener('click', searchModrinth);
-$('#modrinthQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchModrinth(); });
+function renderExplore(more) {
+  const box = $('#modrinthResults');
+  if (!explore.hits.length) {
+    box.replaceChildren(el('div', { className: 'empty', textContent: `No ${explore.loader} mods for ${currentVersion()} match your filters.` }));
+    $('#modrinthMore').hidden = true;
+    return;
+  }
+  box.replaceChildren(...explore.hits.map((h) => {
+    const installable = h.loader === currentLoader();
+    const actions = [];
+    if (installable) {
+      const install = el('button', { className: 'btn small primary', textContent: 'Install' });
+      install.addEventListener('click', async () => {
+        install.disabled = true;
+        install.textContent = 'Installing…';
+        const r = await swift.call('mods:install', currentVersion(), h.slug, currentLoader()).catch((e) => ({ ok: false, problems: [e.message] }));
+        toast(r.ok ? `Installed ${r.name} ${r.version}` : (r.problems || ['Could not install']).join(' '), !r.ok);
+        install.disabled = false;
+        install.textContent = 'Install';
+        if (r.ok) renderMods();
+      });
+      actions.push(install);
+    }
+    const open = el('button', { className: 'btn small ghost', textContent: installable ? 'View' : 'Open' });
+    open.addEventListener('click', () => swift.call('shell:open', `https://modrinth.com/mod/${h.slug}`));
+    actions.push(open);
+    const badges = [h.loader, ...h.categories.filter((c) => c !== h.loader).slice(0, 3)]
+      .map((c) => exploreBadge(c, c === h.loader));
+    return el('div', { className: 'mod-hit' },
+      h.icon ? el('img', { className: 'mod-icon', src: h.icon, alt: '' }) : el('div', { className: 'mod-icon' }),
+      el('div', { className: 'grow' },
+        el('div', { className: 'title' }, el('b', { textContent: h.title }), ...badges),
+        el('div', { className: 'desc', textContent: h.description }),
+        el('div', { className: 'meta' },
+          ...[`${num(h.downloads)} downloads`, h.author ? `by ${h.author}` : '', installable ? '' : 'browse only']
+            .filter(Boolean).map((t) => el('span', { textContent: t })))),
+      el('div', { className: 'actions' }, ...actions));
+  }));
+  $('#modrinthMore').hidden = !more;
+}
+
+async function loadExplore(reset = true) {
+  if (explore.loading) return;
+  explore.loading = true;
+  const box = $('#modrinthResults');
+  if (reset) {
+    explore.offset = 0;
+    explore.hits = [];
+    box.replaceChildren(el('div', { className: 'muted', textContent: 'Loading Modrinth…' }));
+  }
+  try {
+    const hits = await swift.call('mods:search', currentVersion(), {
+      query: explore.query,
+      loader: explore.loader,
+      sort: explore.sort,
+      category: explore.category,
+      offset: explore.offset,
+      limit: 20,
+    });
+    explore.hits = reset ? hits : explore.hits.concat(hits);
+    explore.offset += hits.length;
+    explore.loaded = true;
+    renderExplore(hits.length === 20);
+  } catch (e) {
+    toast(e.message, true);
+    if (reset) box.replaceChildren();
+  } finally {
+    explore.loading = false;
+  }
+}
+
+$('#modrinthSearch').addEventListener('click', () => { explore.query = $('#modrinthQuery').value.trim(); loadExplore(); });
+$('#modrinthQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') { explore.query = $('#modrinthQuery').value.trim(); loadExplore(); } });
+$('#modrinthSort').addEventListener('change', (e) => { explore.sort = e.target.value; loadExplore(); });
+$('#modrinthCategory').addEventListener('change', (e) => { explore.category = e.target.value; loadExplore(); });
+$$('#modrinthLoaders .chip').forEach((b) => b.addEventListener('click', () => {
+  $$('#modrinthLoaders .chip').forEach((x) => x.classList.toggle('active', x === b));
+  explore.loader = b.dataset.loader;
+  loadExplore();
+}));
+$('#modrinthMore').addEventListener('click', () => loadExplore(false));
 const drop = $('#dropZone');
 ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
 ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('over')));
@@ -349,12 +536,18 @@ window.addEventListener('drop', (e) => e.preventDefault());
 // ---- capes -----------------------------------------------------------------------
 
 function capePreview(src) {
-  // Draw the outer face of a 64x32 cape texture (x 1..10, y 1..16), the side seen from behind.
-  const c = el('canvas', { width: 10, height: 16 });
+  // Draw the outer face of the cape layout (x 1..10, y 1..16), the side seen from behind.
+  // Rendered at 16x so HD cloak art keeps its detail instead of being crushed to 10x16.
+  const scale = 16;
+  const c = el('canvas', { width: 10 * scale, height: 16 * scale });
   const img = new Image();
   img.onload = () => {
     const s = img.width / 64;
-    c.getContext('2d').drawImage(img, 1 * s, 1 * s, 10 * s, 16 * s, 0, 0, 10, 16);
+    const ctx = c.getContext('2d');
+    // HD atlases downsample smoothly; classic 64x32 capes keep their crisp pixels.
+    ctx.imageSmoothingEnabled = img.width > 64;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 1 * s, 1 * s, 10 * s, 16 * s, 0, 0, c.width, c.height);
   };
   img.src = src;
   return c;
@@ -363,12 +556,12 @@ function capePreview(src) {
 async function renderCapes() {
   const grid = $('#capeGrid');
   if (!state.info.capesEnabled) {
-    grid.replaceChildren(el('div', { className: 'empty', textContent: 'Shared capes are not configured for this build.' }));
+    grid.replaceChildren(el('div', { className: 'empty', textContent: 'Shared cloaks are not configured for this build.' }));
     return;
   }
   let data;
   try { data = await swift.call('capes:catalog'); } catch (e) {
-    grid.replaceChildren(el('div', { className: 'empty', textContent: `Could not reach the cape server: ${e.message}` }));
+    grid.replaceChildren(el('div', { className: 'empty', textContent: `Could not reach the cloak server: ${e.message}` }));
     return;
   }
   const card = (cape) => {
@@ -376,14 +569,14 @@ async function renderCapes() {
     const locked = cape && !cape.owned;
     const n = el('div', { className: `cape${selected ? ' selected' : ''}${locked ? ' locked' : ''}` },
       cape ? capePreview(cape.image) : el('div', { className: 'none' }),
-      el('div', { className: 'cname', textContent: cape ? cape.name : 'No cape' }),
-      el('div', { className: 'cdesc', textContent: cape ? (cape.description || '') : 'Show your Minecraft cape, if any' }));
+      el('div', { className: 'cname', textContent: cape ? cape.name : 'No cloak' }),
+      el('div', { className: 'cdesc', textContent: cape ? (cape.description || '') : 'Show your Minecraft cloak, if any' }));
     if (locked) n.append(el('span', { className: 'lock', textContent: 'Locked' }));
     if (!locked && !selected) {
       n.addEventListener('click', async () => {
         try {
           await swift.call('capes:select', cape ? cape.id : null);
-          toast(cape ? `Equipped ${cape.name}` : 'Cape removed');
+          toast(cape ? `Equipped ${cape.name}` : 'Cloak removed');
           renderCapes();
         } catch (e) { toast(e.message, true); }
       });
@@ -401,7 +594,7 @@ async function redeemCapeCode() {
   try {
     const r = await swift.call('capes:redeem', input.value);
     input.value = '';
-    toast(`Unlocked the ${r.cape} cape`);
+    toast(`Unlocked the ${r.cape} cloak`);
     renderCapes();
   } catch (e) {
     toast(e.message, true);
@@ -421,14 +614,14 @@ async function renderAdminCodes() {
   panel.hidden = !isAdmin;
   if (!isAdmin) return;
   const select = $('#adminCape');
-  if (!select.options.length) {
-    try {
-      const data = await swift.call('capes:catalog');
-      const hidden = data.capes.filter((c) => !c.public);
-      select.replaceChildren(...hidden.map((c) => el('option', { value: c.id, textContent: c.name })));
-    } catch (e) {
-      toast(e.message, true);
-    }
+  try {
+    const data = await swift.call('capes:catalog');
+    const previous = select.value;
+    const privateCapes = data.capes.filter((c) => !c.public);
+    select.replaceChildren(...privateCapes.map((c) => el('option', { value: c.id, textContent: c.name })));
+    if (privateCapes.some((c) => c.id === previous)) select.value = previous;
+  } catch (e) {
+    toast(e.message, true);
   }
   try {
     const { codes } = await adminCall({ action: 'list' });
@@ -439,6 +632,69 @@ async function renderAdminCodes() {
   } catch (e) {
     toast(e.message, true);
   }
+  renderAdminPartners();
+  renderAdminCapes();
+}
+
+async function renderAdminPartners() {
+  const list = $('#adminPartnerList');
+  if (!list) return;
+  const servers = (state.info.servers || []).filter((s) => s.partner);
+  if (!servers.length) {
+    list.replaceChildren(el('div', { className: 'empty', textContent: 'No partner servers configured.' }));
+    return;
+  }
+  list.replaceChildren(...servers.map((s) => {
+    const hidden = !!s.hidden;
+    const button = el('button', { className: `btn small ${hidden ? 'ghost' : 'danger'}`, textContent: hidden ? 'Show' : 'Hide' });
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        await swift.call('partners:admin', { action: hidden ? 'show' : 'hide', address: s.address });
+        state.info = await swift.call('app:info');
+        setServers(state.info.servers);
+        renderAdminPartners();
+        refreshStatus();
+        toast(`${s.name} is ${hidden ? 'visible' : 'hidden'} for SwiftClient.`);
+      } catch (e) {
+        toast(e.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+    return el('div', { className: 'admin-row' },
+      el('span', { className: 'grow', textContent: `${s.name} · ${s.address}${hidden ? ' · HIDDEN' : ''}` }),
+      button);
+  }));
+}
+
+async function renderAdminCapes() {
+  const list = $('#adminCapeList');
+  if (!list) return;
+  try {
+    const { capes } = await swift.call('capes:adminCapes', { action: 'list' });
+    list.replaceChildren(...capes.map((c) => {
+      const button = el('button', { className: `btn small ${c.hidden ? 'ghost' : 'danger'}`, textContent: c.hidden ? 'Show' : 'Hide' });
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          await swift.call('capes:adminCapes', { action: c.hidden ? 'show' : 'hide', cape: c.id });
+          renderCapes();
+          renderAdminCodes();
+          toast(`${c.name} is ${c.hidden ? 'visible' : 'hidden'}.`);
+        } catch (e) {
+          toast(e.message, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+      return el('div', { className: 'admin-row' },
+        el('span', { className: 'grow', textContent: `${c.name} · ${c.id}${c.public ? '' : ' · private'}${c.hidden ? ' · HIDDEN' : ''}` }),
+        button);
+    }));
+  } catch (e) {
+    toast(e.message, true);
+  }
 }
 
 async function createAdminCodes() {
@@ -446,7 +702,7 @@ async function createAdminCodes() {
   const cape = $('#adminCape').value;
   const uses = Number($('#adminUses').value);
   const count = Number($('#adminCount').value);
-  if (!cape) { toast('Pick a cape first.', true); return; }
+  if (!cape) { toast('Pick a cloak first.', true); return; }
   button.disabled = true;
   try {
     const r = await adminCall({ action: 'create', cape, uses, count });
@@ -618,6 +874,7 @@ function startFriendsPolling() {
 
 (async function boot() {
   state.info = await swift.call('app:info');
+  setServers(state.info.servers);
   $('#appVersion').textContent = `v${state.info.version}`;
   $$('.server-name').forEach((n) => { n.textContent = state.info.server.name; });
   if (!state.info.authConfigured) $('#loginError').textContent = 'Microsoft sign-in is not configured in this build (msClientId is empty).';
@@ -636,6 +893,7 @@ function startFriendsPolling() {
   }
   renderVersions();
   $('#modsVersion').textContent = currentVersion();
+  $('#exploreVersion').textContent = currentVersion();
   state.running = await swift.call('game:running');
   setBusy(false);
   refreshStatus();

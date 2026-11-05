@@ -8,6 +8,7 @@ const os = require('os');
 const path = require('path');
 const { paths } = require('./config');
 const { fetchJson, fetchJsonCached, downloadAll } = require('./download');
+const { resolveLoader } = require('./loaders');
 
 const VERSION_MANIFEST = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
 const JAVA_RUNTIMES = 'https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json';
@@ -103,18 +104,24 @@ async function installJava(component, onProgress) {
 
 // ---- install ----------------------------------------------------------------
 
-async function resolveFabricLoader(mc) {
+async function resolveFabric(mc) {
   const loaders = await fetchJsonCached(`${FABRIC_META}/versions/loader/${mc}`, path.join(paths.cache, `fabric_loaders_${mc}.json`), HOUR);
   const stable = loaders.find((l) => l.loader.stable) || loaders[0];
   if (!stable) throw new Error(`Fabric does not support Minecraft ${mc} yet.`);
-  return stable.loader.version;
+  const loaderVersion = stable.loader.version;
+  const id = `fabric-loader-${loaderVersion}-${mc}`;
+  const profile = await fetchJsonCached(
+    `${FABRIC_META}/versions/loader/${mc}/${loaderVersion}/profile/json`,
+    path.join(paths.versions, id, `${id}.json`),
+  );
+  return { id, loaderVersion, mainClass: profile.mainClass, arguments: profile.arguments, libraries: profile.libraries, maven: 'https://maven.fabricmc.net/' };
 }
 
 /**
- * Makes sure everything needed to launch `mc` with Fabric is on disk.
+ * Makes sure everything needed to launch `mc` with `loader` is on disk.
  * Returns the merged launch profile.
  */
-async function install(mc, onProgress = () => {}) {
+async function install(mc, onProgress = () => {}, loader = 'fabric') {
   onProgress(0, 1, 'Reading version info');
   const manifest = await fetchJsonCached(VERSION_MANIFEST, path.join(paths.cache, 'version_manifest_v2.json'), HOUR);
   const entry = manifest.versions.find((v) => v.id === mc);
@@ -125,25 +132,20 @@ async function install(mc, onProgress = () => {}) {
   await downloadAll([{ url: entry.url, file: versionFile, sha1: entry.sha1 }], { label: 'Version info' });
   const vanilla = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
 
-  const loaderVersion = await resolveFabricLoader(mc);
-  const fabricId = `fabric-loader-${loaderVersion}-${mc}`;
-  const fabric = await fetchJsonCached(
-    `${FABRIC_META}/versions/loader/${mc}/${loaderVersion}/profile/json`,
-    path.join(paths.versions, fabricId, `${fabricId}.json`),
-  );
-
-  // Java first: it is the biggest single download and is shared between versions.
+  // Java first: it is the biggest single download, is shared between versions, and the
+  // Forge/NeoForge installers need it to run.
   const javaComponent = (vanilla.javaVersion && vanilla.javaVersion.component) || 'java-runtime-delta';
   const java = await installJava(javaComponent, onProgress);
+  const profile = loader === 'fabric' ? await resolveFabric(mc) : await resolveLoader(mc, loader, java, onProgress);
 
-  // Libraries: Fabric's take precedence over vanilla entries with the same coordinates.
+  // Libraries: the loader's take precedence over vanilla entries with the same coordinates.
   const libs = new Map();
   const tasks = [];
-  for (const lib of fabric.libraries) {
+  for (const lib of profile.libraries) {
     const rel = mavenPath(lib.name);
     const file = path.join(paths.libraries, rel);
     libs.set(libraryKey(lib.name), file);
-    tasks.push({ url: `${lib.url || 'https://maven.fabricmc.net/'}${rel}`, file, sha1: lib.sha1, size: lib.size });
+    tasks.push({ url: `${lib.url || profile.maven}${rel}`, file, sha1: lib.sha1, size: lib.size });
   }
   for (const lib of vanilla.libraries) {
     if (!rulesAllow(lib.rules)) continue;
@@ -184,17 +186,18 @@ async function install(mc, onProgress = () => {}) {
 
   return {
     mc,
-    id: fabricId,
-    loaderVersion,
+    loader,
+    id: profile.id,
+    loaderVersion: profile.loaderVersion,
     java,
     javaMajor: (vanilla.javaVersion && vanilla.javaVersion.majorVersion) || 21,
-    mainClass: fabric.mainClass,
+    mainClass: profile.mainClass,
     classpath: [...libs.values(), clientJar],
     assetIndex: ai.id,
     versionType: vanilla.type,
     logConfig,
-    gameArgs: [...(vanilla.arguments.game || []), ...((fabric.arguments && fabric.arguments.game) || [])],
-    jvmArgs: [...(vanilla.arguments.jvm || []), ...((fabric.arguments && fabric.arguments.jvm) || [])],
+    gameArgs: [...(vanilla.arguments.game || []), ...((profile.arguments && profile.arguments.game) || [])],
+    jvmArgs: [...(vanilla.arguments.jvm || []), ...((profile.arguments && profile.arguments.jvm) || [])],
     nativesDir: path.join(versionDir, 'natives'),
   };
 }

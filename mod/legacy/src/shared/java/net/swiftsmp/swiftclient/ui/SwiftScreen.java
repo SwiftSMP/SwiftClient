@@ -92,26 +92,30 @@ public abstract class SwiftScreen extends ScreenBase {
 		}
 	}
 
+	/** The site's .btn.primary: solid orange, #ff8d33 rim, dark ink label, orange glow. */
 	protected void primaryButton(Gfx g, String key, int x, int y, int w, int h, String label, Runnable action) {
 		float hv = hover(key, x, y, w, h);
 		Theme.glow(g, x, y, w, h, h / 2, 0.6f + 0.6f * hv);
-		Theme.round(g, x, y, w, h, h / 2, Theme.mix(Theme.ACCENT, Theme.ACCENT_BRIGHT, hv));
-		g.fill(x + h / 2, y + 1, x + w - h / 2, y + 2, 0x30FFFFFF);
+		Theme.round(g, x, y, w, h, h / 2, 0xFFFF8D33);
+		Theme.round(g, x + 1, y + 1, w - 2, h - 2, Math.max(0, h / 2 - 1), Theme.mix(Theme.ACCENT, Theme.ACCENT_BRIGHT, hv));
 		Component text = Theme.display(label);
-		g.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, 0xFFFFFFFF, false);
+		g.text(font, text, x + (w - font.width(text)) / 2, y + (h - 8) / 2, Theme.INK, false);
 		clickable(x, y, w, h, action);
 	}
 
+	/** The site's .btn: navy fill, hairline border that turns orange on hover. */
 	protected void ghostButton(Gfx g, String key, int x, int y, int w, int h, String label, Runnable action) {
 		float hv = hover(key, x, y, w, h);
-		Theme.glass(g, x, y, w, h, Math.min(8, h / 2), Theme.mix(Theme.GLASS_LIGHT, Theme.alpha(Theme.ACCENT, 0.35f), hv));
+		Theme.panel(g, x, y, w, h, Math.min(8, h / 2), Theme.PANEL_2, Theme.mix(Theme.BORDER, Theme.ACCENT, hv));
 		g.text(font, label, x + (w - font.width(label)) / 2, y + (h - 8) / 2, Theme.TEXT, false);
 		clickable(x, y, w, h, action);
 	}
 
 	/** Backdrop used by our screens: the panorama (or the world) under a navy wash. */
 	protected void backdrop(Gfx g) {
-		g.fillGradient(0, 0, width, height, Theme.alpha(Theme.BG_DEEP, 0.35f), Theme.alpha(Theme.BG_DEEP, 0.85f));
-		g.fillGradient(0, 0, width, height / 2, Theme.alpha(Theme.ACCENT, 0.10f), 0x00000000);
+		if (net.minecraft.client.Minecraft.getInstance().level == null) Theme.titleBackground(g, width, height);
+		// the launcher's dark glass wash, so panes read the same in game as in the launcher
+		g.fillGradient(0, 0, width, height, Theme.alpha(Theme.BG_DEEP, 0.12f), Theme.alpha(Theme.BG_DEEP, 0.55f));
+		g.fillGradient(0, 0, width, height / 2, Theme.alpha(Theme.ACCENT, 0.06f), 0x00000000);
 	}
 }

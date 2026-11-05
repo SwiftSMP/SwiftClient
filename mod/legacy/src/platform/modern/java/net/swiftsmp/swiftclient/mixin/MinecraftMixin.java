@@ -24,6 +24,12 @@ public abstract class MinecraftMixin {
 		return screen instanceof TitleScreen ? new SwiftTitleScreen() : screen;
 	}
 
+	/** Quit-to-title uses setScreenAndShow directly in newer 1.21.x builds. */
+	@ModifyVariable(method = "setScreenAndShow", at = @At("HEAD"), argsOnly = true)
+	private Screen swiftclient$showTitle(Screen screen) {
+		return screen instanceof TitleScreen ? new SwiftTitleScreen() : screen;
+	}
+
 	/** Drives the menu/hud keys, presence and tweaks without Fabric API events. */
 	@Inject(method = "tick", at = @At("TAIL"))
 	private void swiftclient$tick(CallbackInfo ci) {

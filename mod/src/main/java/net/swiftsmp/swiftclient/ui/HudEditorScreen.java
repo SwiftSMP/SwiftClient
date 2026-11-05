@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.network.chat.Component;
 import net.swiftsmp.swiftclient.config.SwiftConfig;
 import net.swiftsmp.swiftclient.hud.HudModule;
 import net.swiftsmp.swiftclient.hud.HudRenderer;
@@ -27,7 +28,7 @@ public final class HudEditorScreen extends SwiftScreen {
 
 	@Override
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
-		g.fill(0, 0, width, height, Theme.alpha(Theme.BG_DEEP, 0.35f));
+		g.fill(0, 0, width, height, Theme.alpha(Theme.BG_DEEP, 0.12f));
 	}
 
 	@Override
@@ -52,9 +53,10 @@ public final class HudEditorScreen extends SwiftScreen {
 			outline(g, b[0] - 2, b[1] - 2, b[2] + 4, b[3] + 4, hot ? Theme.ACCENT : Theme.alpha(Theme.MUTED, 0.6f));
 			if (hot) {
 				String label = m.name + "  " + Math.round(m.settings().scale * 100) + "%";
+				Component labelText = Theme.display(label);
 				int ly = b[1] - 14 < 0 ? b[1] + b[3] + 4 : b[1] - 14;
-				Theme.round(g, b[0] - 2, ly, font.width(label) + 8, 11, 5, Theme.ACCENT);
-				g.text(font, label, b[0] + 2, ly + 2, 0xFFFFFFFF, false);
+				Theme.round(g, b[0] - 2, ly, font.width(labelText) + 8, 11, 5, Theme.ACCENT);
+				g.text(font, labelText, b[0] + 2, ly + 2, 0xFFFFFFFF, false);
 			}
 		}
 
@@ -65,11 +67,12 @@ public final class HudEditorScreen extends SwiftScreen {
 			int tx = (width - tw) / 2, ty = height / 2 - 13;
 			Theme.glow(g, tx, ty, tw, 26, 13, 0.5f);
 			Theme.glass(g, tx, ty, tw, 26, 13, Theme.GLASS);
-			Theme.logo(g, tx + 7, ty + 5, 16);
+			Theme.menuLogo(g, tx + 7, ty + 5, 16);
 			ghostButton(g, "reset", tx + 30, ty + 5, 60, 16, "Reset", this::reset);
 			primaryButton(g, "done", tx + 96, ty + 5, 64, 16, "Done", this::onClose);
 			String help = "Drag to move · Scroll to resize · Right-click to hide";
-			g.text(font, help, (width - font.width(help)) / 2, ty + 32, Theme.alpha(Theme.TEXT, 0.75f), true);
+			Component helpText = Theme.display(help);
+			g.text(font, helpText, (width - font.width(helpText)) / 2, ty + 32, Theme.alpha(Theme.TEXT, 0.75f), true);
 		}
 	}
 

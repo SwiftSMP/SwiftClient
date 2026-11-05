@@ -31,13 +31,14 @@ dependencies {
 sourceSets {
 	main {
 		java {
-			def dirs = ['src/shared/java', "src/platform/${era}/java"]
+			def dirs = ['src/shared/java', '../shared/java', "src/platform/${era}/java"]
 			if (era == '1.21.9' || era == '1.21.11') dirs << 'src/platform/modern/java'
 			else dirs << 'src/platform/legacy/java'
 			srcDirs = dirs
 		}
 		resources {
-			srcDirs = ['src/main/resources']
+			// Lyrics engine and now-playing bridge are shared with the 26.x build.
+			srcDirs = ['src/main/resources', '../shared/resources']
 		}
 	}
 }

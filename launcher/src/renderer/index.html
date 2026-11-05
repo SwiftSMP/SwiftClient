@@ -7,65 +7,84 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="titlebar">
-    <div class="brand">
-      <img src="img/logo.png" alt="">
-      <span class="word">Swift<b>Client</b></span>
-      <span class="tag" id="appVersion"></span>
-    </div>
-    <div class="update hidden" id="updateBanner"></div>
-    <div class="title-right">
-    <div class="acct-menu" id="acctMenu">
-      <button class="acct-btn" id="acctBtn" aria-haspopup="true" aria-expanded="false">
-        <img id="acctHead" alt="">
-        <span class="acct-text"><b id="acctName">Not signed in</b><small id="acctKind"></small></span>
-        <span class="caret">&#9662;</span>
-      </button>
-      <div class="acct-pop hidden" id="acctPop" role="menu">
-        <div id="acctList"></div>
-        <button class="acct-item add" id="acctAddBtn"><span class="plus">+</span> Add account</button>
-        <button class="acct-item signout" id="logoutBtn">Sign out of Microsoft</button>
+  <header class="nav-wrap">
+    <nav class="nav" aria-label="Main">
+      <div class="nav-side nav-left">
+        <button class="nav-link active" data-view="play"><i><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></i><span>Play</span></button>
+        <button class="nav-link" data-view="servers"><i><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1.2"/><rect x="2" y="9" width="12" height="4.5" rx="1.2"/><circle cx="4.8" cy="4.75" r=".75" fill="currentColor" stroke="none"/><circle cx="4.8" cy="11.25" r=".75" fill="currentColor" stroke="none"/></svg></i><span>Servers</span></button>
+        <button class="nav-link" data-view="mods"><i><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8 14 5v6l-6 3.2L2 11V5z"/><path d="m2 5 6 3.2L14 5M8 8.2v6"/></svg></i><span>Mods</span></button>
+        <button class="nav-link" data-view="cosmetics"><i><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 2 3 3.4 2 6.6l2 .8v6.4h8V7.4l2-.8L13 3.4 10.5 2a2.6 2.6 0 0 1-5 0z"/></svg></i><span>Cloak</span></button>
       </div>
-    </div>
-    <div class="win-controls">
-      <button data-win="minimize" title="Minimize">&#x2013;</button>
-      <button data-win="maximize" title="Maximize">&#x25A1;</button>
-      <button data-win="close" class="close" title="Close">&#x2715;</button>
-    </div>
+
+      <div class="brand">
+        <img src="img/logo.png" alt="">
+        <span class="brand-word">Swift<b>Client</b></span>
+        <span class="tag" id="appVersion"></span>
+      </div>
+
+      <div class="nav-side nav-right">
+        <button class="nav-link" data-view="friends"><i><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="6" cy="5.4" r="2.4"/><path d="M1.8 13.4c0-2.4 1.9-4 4.2-4s4.2 1.6 4.2 4"/><path d="M11 3.4a2.4 2.4 0 0 1 0 4.6M12.2 9.8c1.3.5 2.1 1.7 2.1 3.2"/></svg></i><span>Friends</span></button>
+        <button class="nav-link" data-view="settings"><i><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="2.4"/><path d="M8 1.6v1.8M8 12.6v1.8M14.4 8h-1.8M3.4 8H1.6M12.5 3.5l-1.3 1.3M4.8 11.2l-1.3 1.3M12.5 12.5l-1.3-1.3M4.8 4.8 3.5 3.5"/></svg></i><span>Settings</span></button>
+        <div class="update hidden" id="updateBanner"></div>
+        <div class="acct-menu" id="acctMenu">
+          <button class="acct-btn" id="acctBtn" aria-haspopup="true" aria-expanded="false">
+            <img id="acctHead" alt="">
+            <span class="acct-text"><b id="acctName">Not signed in</b><small id="acctKind"></small></span>
+            <span class="caret">&#9662;</span>
+          </button>
+          <div class="acct-pop hidden" id="acctPop" role="menu">
+            <div id="acctList"></div>
+            <button class="acct-item add" id="acctAddBtn"><span class="plus">+</span> Add account</button>
+            <button class="acct-item signout" id="logoutBtn">Sign out of Microsoft</button>
+          </div>
+        </div>
+        <div class="win-controls">
+          <button data-win="minimize" title="Minimize">&#x2013;</button>
+          <button data-win="maximize" title="Maximize">&#x25A1;</button>
+          <button data-win="close" class="close" title="Close">&#x2715;</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="player-search">
+      <i><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.4"/><path d="m10.4 10.4 3.4 3.4"/></svg></i>
+      <input id="globalSearch" type="search" placeholder="Search a server, mod, cloak or friend…" aria-label="Search SwiftClient" spellcheck="false" autocomplete="off">
+      <div class="status-strip" id="statusStrip" title="Live counts">
+        <div class="status-card" id="serverCard">
+          <span class="pulse" id="serverDot"></span>
+          <div class="status-text"><b id="serverOnline">&mdash;</b><small id="serverLabel">players on <span class="server-name">SwiftSMP</span></small></div>
+        </div>
+        <div class="status-card" id="clientCard">
+          <span class="pulse alt" id="clientDot"></span>
+          <div class="status-text"><b id="clientOnline">&mdash;</b><small id="clientLabel">SwiftClient players online</small></div>
+        </div>
+        <div class="status-card" id="downloadsCard" title="Total downloads">
+          <span class="download-ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8m0 0 3-3M8 10 5 7M2.5 12.5h11"/></svg></span>
+          <div class="status-text"><b id="totalDownloads">&mdash;</b><small>total downloads</small></div>
+        </div>
+      </div>
+      <ul class="suggest" id="suggest" hidden></ul>
     </div>
   </header>
 
   <div class="shell">
-    <nav class="sidebar">
-      <button class="nav active" data-view="play"><span class="ico">&#9654;</span>Play</button>
-      <button class="nav" data-view="mods"><span class="ico">&#9638;</span>Mods</button>
-      <button class="nav" data-view="cosmetics"><span class="ico">&#9873;</span>Cosmetics</button>
-      <button class="nav" data-view="friends"><span class="ico">&#9787;</span>Friends</button>
-      <button class="nav" data-view="settings"><span class="ico">&#9881;</span>Settings</button>
-      <div class="spacer"></div>
-    </nav>
-
     <main>
       <!-- PLAY -->
       <section class="view active" id="view-play">
         <div class="hero">
           <img class="hero-logo" src="img/logo.png" alt="">
           <h1 class="word big">Swift<b>Client</b></h1>
-          <p class="muted">Fabric, tuned for frames. Built for <span class="gold server-name">SwiftSMP</span>.</p>
+          <p class="muted">The ultra-fast Minecraft client.</p>
           <div class="play-row">
             <select id="versionSelect" title="Minecraft version"></select>
+            <select id="loaderSelect" title="Mod loader">
+              <option value="fabric">Fabric</option>
+              <option value="quilt">Quilt</option>
+              <option value="forge">Forge</option>
+              <option value="neoforge">NeoForge</option>
+            </select>
             <button class="btn primary huge" id="playBtn">Play</button>
             <button class="btn ghost" id="joinBtn">Join <span class="server-name">SwiftSMP</span></button>
-          </div>
-          <div class="status-strip" id="statusStrip" title="Live counts">
-            <div class="status-card" id="serverCard">
-              <span class="pulse" id="serverDot"></span>
-              <div class="status-text"><b id="serverOnline">&mdash;</b><small id="serverLabel">players on <span class="server-name">SwiftSMP</span></small></div>
-            </div>
-            <div class="status-card" id="clientCard">
-              <span class="pulse alt" id="clientDot"></span>
-              <div class="status-text"><b id="clientOnline">&mdash;</b><small id="clientLabel">SwiftClient players online</small><small id="clientDownloads"></small></div>
-            </div>
           </div>
           <div class="progress hidden" id="progress">
             <div class="bar"><i id="progressBar"></i></div>
@@ -79,6 +98,33 @@
         </details>
       </section>
 
+      <!-- SERVERS -->
+      <section class="view" id="view-servers">
+        <div class="view-head">
+          <div>
+            <h2>Servers</h2>
+            <p class="muted">SwiftSMP and our partnered communities. Live counts, one click to join.</p>
+          </div>
+          <button class="btn ghost" id="serversRefresh">Refresh</button>
+        </div>
+        <div class="servers-hero">
+          <div>
+            <span class="eyebrow">One community</span>
+            <h3>Find your next world</h3>
+            <p class="muted">Every server here is pinned in your in-game multiplayer list, so it is always one click away.</p>
+          </div>
+          <img src="img/logo.png" alt="">
+        </div>
+        <div class="server-grid" id="serverList"></div>
+        <div class="server-note">
+          <div>
+            <b>Want your server featured here?</b>
+            <span class="muted">Server owners can open a partnership ticket in the SwiftSMP Discord.</span>
+          </div>
+          <button class="btn ghost" id="partnerTicket">Partnerships</button>
+        </div>
+      </section>
+
       <!-- MODS -->
       <section class="view" id="view-mods">
         <div class="view-head">
@@ -88,11 +134,46 @@
             <button class="btn primary" id="importBtn">Import mods</button>
           </div>
         </div>
-        <div class="row">
-          <input type="text" id="modrinthQuery" placeholder="Search Modrinth for Fabric mods for this profile">
-          <button class="btn ghost" id="modrinthSearch">Search</button>
+        <div class="explore">
+          <div class="explore-head">
+            <div>
+              <h3>Explore Modrinth</h3>
+              <p class="muted small">Browse mods for <b id="exploreVersion"></b>. Installs match the loader selected on Play; other loaders are browse-only.</p>
+            </div>
+            <div class="explore-loaders" id="modrinthLoaders">
+              <button class="chip active" data-loader="fabric">Fabric</button>
+              <button class="chip" data-loader="quilt">Quilt</button>
+              <button class="chip" data-loader="forge">Forge</button>
+              <button class="chip" data-loader="neoforge">NeoForge</button>
+            </div>
+          </div>
+          <div class="explore-bar">
+            <input type="text" id="modrinthQuery" placeholder="Search Modrinth…" spellcheck="false" autocomplete="off">
+            <select id="modrinthSort" title="Sort by">
+              <option value="downloads">Popularity</option>
+              <option value="newest">Newest</option>
+              <option value="relevance">Relevance</option>
+            </select>
+            <select id="modrinthCategory" title="Category">
+              <option value="">All categories</option>
+              <option value="optimization">Optimization</option>
+              <option value="adventure">Adventure</option>
+              <option value="decoration">Decoration</option>
+              <option value="economy">Economy</option>
+              <option value="equipment">Equipment</option>
+              <option value="food">Food</option>
+              <option value="library">Library</option>
+              <option value="magic">Magic</option>
+              <option value="storage">Storage</option>
+              <option value="technology">Technology</option>
+              <option value="utility">Utility</option>
+              <option value="worldgen">World generation</option>
+            </select>
+            <button class="btn ghost" id="modrinthSearch">Search</button>
+          </div>
+          <div class="results mod-hits" id="modrinthResults"></div>
+          <button class="btn ghost" id="modrinthMore" hidden>Load more</button>
         </div>
-        <div class="results" id="modrinthResults"></div>
         <div class="drop" id="dropZone">
           <div class="drop-title">Drop Fabric <code>.jar</code> files here</div>
           <div class="muted">Each mod is checked for the right loader, Minecraft version and conflicts before it is added.</div>
@@ -104,10 +185,10 @@
       <!-- COSMETICS -->
       <section class="view" id="view-cosmetics">
         <div class="view-head">
-          <div><h2>Capes</h2><p class="muted">Everyone playing on SwiftClient sees your cape.</p></div>
+          <div><h2>Cloaks</h2><p class="muted">Everyone playing on SwiftClient sees your cloak, in HD.</p></div>
         </div>
         <div class="row">
-          <input type="text" id="capeCode" placeholder="Have a cape code? Enter it here" spellcheck="false" autocomplete="off">
+          <input type="text" id="capeCode" placeholder="Have a cloak code? Enter it here" spellcheck="false" autocomplete="off">
           <button class="btn ghost" id="capeRedeem">Redeem</button>
         </div>
         <div class="cape-grid" id="capeGrid"></div>
@@ -121,6 +202,12 @@
           </div>
           <textarea id="adminOut" readonly spellcheck="false" placeholder="New codes appear here once. Copy them before you leave." hidden></textarea>
           <div class="admin-list" id="adminList"></div>
+          <h3 class="mt">Partner servers</h3>
+          <p class="muted small">Hide a partner from the launcher, server cards and pinned list when a partnership ends. Show restores it.</p>
+          <div class="admin-list" id="adminPartnerList"></div>
+          <h3 class="mt">Cloak visibility</h3>
+          <p class="muted small">Hide a cloak from the catalog and every player. Show restores it.</p>
+          <div class="admin-list" id="adminCapeList"></div>
         </div>
       </section>
 

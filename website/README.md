@@ -4,10 +4,19 @@ Static site for **https://swiftclient.swiftsmp.net**: no build step, just copy t
 
 ```
 website/
-├─ index.html, styles.css, app.js
+├─ index.html, styles.css, app.js     home page (same design system as swiftsmp.com)
+├─ android/, download/                 search landing pages, generated from index.html
+├─ sitemap.xml, robots.txt, site.webmanifest
+├─ tools/make_pages.py                 rebuilds android/ and download/ after editing index.html
 ├─ assets/          fonts (OFL), logo, screenshots (webp), og.jpg
 └─ downloads/       put SwiftClient.apk here (not in git)
 ```
+
+Live data on the page: SwiftClient counters and capes from `https://capes.swiftsmp.com`, SwiftSMP
+players from `https://swiftsmp.com/api/status`. In-game screenshots are from SwiftClient 1.4 on 26.3.
+
+After editing the nav, head or footer in `index.html`, run `python tools/make_pages.py` so the
+Android and Download pages match. Update `<lastmod>` in `sitemap.xml` when content changes.
 
 Links it uses: the Microsoft Store listing (`9P118N2JM63C`), the `.exe` from the latest GitHub
 release, `downloads/SwiftClient.apk` on this server, and the live counters from
@@ -19,7 +28,7 @@ release, `downloads/SwiftClient.apk` on this server, and the live counters from
 2. Copy the site:
 
    ```bash
-   rsync -av --delete --exclude downloads/ website/ root@<vps>:/var/www/swiftclient/
+   rsync -av --delete --exclude downloads/ --exclude tools/ --exclude README.md website/ root@<vps>:/var/www/swiftclient/
    scp SwiftClient.apk root@<vps>:/var/www/swiftclient/downloads/SwiftClient.apk
    ```
 

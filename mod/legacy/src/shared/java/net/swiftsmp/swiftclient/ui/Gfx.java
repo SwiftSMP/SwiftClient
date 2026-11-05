@@ -25,6 +25,18 @@ public interface Gfx {
 	/** Draws the SwiftClient mascot (swiftclient:icon.png) as a square. */
 	void logo(int x, int y, int size);
 
+	/** Draws the smooth menu mascot (swiftclient:icon_menu.png). */
+	void menuLogo(int x, int y, int size);
+
+	/** Draws a smooth UI icon, returning false when the id is unknown. */
+	boolean uiIcon(String id, int x, int y, int size);
+
+	/** Draws a bundled partner server logo ("cyanrealms" or "valenmc"). */
+	void serverIcon(String key, int x, int y, int size);
+
+	/** Draws the HD SwiftClient title art (swiftclient:title/background.png) into the given rect. */
+	void background(int x, int y, int w, int h);
+
 	int guiWidth();
 
 	int guiHeight();

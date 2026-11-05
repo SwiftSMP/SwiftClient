@@ -7,6 +7,9 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 import net.swiftsmp.swiftclient.config.SwiftConfig;
+import net.swiftsmp.swiftclient.lyrics.LyricsService;
+import net.swiftsmp.swiftclient.lyrics.SkyLyricsDisplay;
+import net.swiftsmp.swiftclient.lyrics.WorldLyrics;
 import net.swiftsmp.swiftclient.platform.Platform;
 import net.swiftsmp.swiftclient.ui.SwiftMenuScreen;
 import org.slf4j.Logger;
@@ -27,18 +30,23 @@ public final class SwiftClientMod implements ClientModInitializer {
 	public static final int KEY_MENU = 344; // GLFW_KEY_RIGHT_SHIFT
 	public static final int KEY_HUD = 297;  // GLFW_KEY_F6
 	public static final int KEY_ZOOM = 67;  // GLFW_KEY_C
+	public static final int KEY_LYRICS = 296; // GLFW_KEY_F7
 
 	private static boolean menuDown;
 	private static boolean hudDown;
+	private static boolean lyricsDown;
 	private static boolean wasPlaying;
 	private static String lastPresence;
 	private static int debugTicks = -1;
+	private static int lyricsDebugTicks;
 
 	@Override
 	public void onInitializeClient() {
 		SwiftConfig.load();
 		String capeApi = System.getProperty("swiftclient.capeApi", "");
 		CapeManager.init(capeApi);
+		LyricsService.init();
+		WorldLyrics.init(SkyLyricsDisplay.INSTANCE);
 		LOG.info("SwiftClient {} loaded for 1.21.x (capes: {})", version(), capeApi.isEmpty() ? "off" : capeApi);
 		presence("menu", null);
 	}
@@ -68,7 +76,32 @@ public final class SwiftClientMod implements ClientModInitializer {
 		}
 		hudDown = hud;
 
+		boolean lyrics = Platform.isKeyDown(KEY_LYRICS);
+		if (lyrics && !lyricsDown) {
+			SwiftConfig.get().lyricsEnabled = !SwiftConfig.get().lyricsEnabled;
+			SwiftConfig.save();
+		}
+		lyricsDown = lyrics;
+
+		// The media bridge and the LRCLIB fetch only run while the sky lyrics are on.
+		SwiftConfig config = SwiftConfig.get();
+		LyricsService.get().tick(config.lyricsEnabled);
+		if (WorldLyrics.get() != null) WorldLyrics.get().tick();
+
+		// Dev/test hook: -Dswiftclient.debug=lyrics turns the sky lyrics on for testing.
+		String debug = System.getProperty("swiftclient.debug", "");
+		if (debug.contains("lyrics") && mc.player != null && ++lyricsDebugTicks == 60) {
+			SwiftConfig.get().lyricsEnabled = true;
+			SwiftConfig.save();
+		}
+
+		// Some Singleplayer exits set a fresh vanilla title directly; never let it show.
+		if (Platform.screen() instanceof net.minecraft.client.gui.screens.TitleScreen) {
+			Platform.setScreen(new net.swiftsmp.swiftclient.ui.SwiftTitleScreen());
+		}
+
 		Tweaks.tick(mc);
+		SwiftBoost.tick(mc);
 		debugTick(mc);
 	}
 

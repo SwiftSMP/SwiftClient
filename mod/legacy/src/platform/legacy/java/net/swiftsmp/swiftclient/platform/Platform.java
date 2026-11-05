@@ -33,8 +33,24 @@ public final class Platform {
 		Minecraft.getInstance().setScreen(screen);
 	}
 
+	public static Style sansStyle() {
+		return Style.EMPTY.withFont(ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "sans"));
+	}
+
+	public static Style sansLargeStyle() {
+		return Style.EMPTY.withFont(ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "sans_big"));
+	}
+
 	public static Style pixelStyle() {
 		return Style.EMPTY.withFont(ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "pixel"));
+	}
+
+	public static Style pixelLargeStyle() {
+		return Style.EMPTY.withFont(ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "pixel_big"));
+	}
+
+	public static Style numStyle() {
+		return Style.EMPTY.withFont(ResourceLocation.fromNamespaceAndPath(SwiftClientMod.MOD_ID, "num"));
 	}
 
 	public static boolean isKeyDown(int key) {
@@ -47,6 +63,10 @@ public final class Platform {
 
 	public static Object registerCapeTexture(String capeId, NativeImage image) {
 		return Textures.cape(capeId, image);
+	}
+
+	public static void ensureSplash() {
+		Textures.splash();
 	}
 
 	public static PlayerSkin withCape(PlayerSkin skin, Object cape) {

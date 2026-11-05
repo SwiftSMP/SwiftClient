@@ -63,6 +63,8 @@ const paths = {
   settings: path.join(ROOT, 'settings.json'),
   account: path.join(ROOT, 'account.bin'),
   instance: (mc) => path.join(ROOT, 'instances', mc),
+  // Non-Fabric loaders get their own instance dirs so mods never mix across loaders.
+  instanceFor: (mc, loader) => path.join(ROOT, 'instances', !loader || loader === 'fabric' ? mc : `${mc}-${loader}`),
 };
 
 const DEFAULT_APP_CONFIG = {
@@ -97,6 +99,7 @@ function loadAppConfig() {
 
 const DEFAULT_SETTINGS = {
   version: null,          // selected Minecraft version; null = newest supported
+  loader: 'fabric',       // fabric, quilt, forge or neoforge
   memoryMb: defaultMemory(),
   width: 1280,
   height: 720,
